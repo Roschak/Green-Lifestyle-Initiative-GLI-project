@@ -4,7 +4,8 @@ import { useNavigate } from 'react-router-dom'
 import { Eye, EyeOff, ArrowLeft } from 'lucide-react'
 import { auth, googleProvider, db } from '../config/firebase_config'
 import { signInWithEmailAndPassword, signInWithPopup } from 'firebase/auth'
-import { doc, getDoc, setDoc, updateDoc } from 'firebase/firestore'
+import { doc, getDoc, updateDoc } from 'firebase/firestore'
+import axios from 'axios'
 
 export default function LoginPage() {
   const navigate = useNavigate()
@@ -15,58 +16,89 @@ export default function LoginPage() {
   const [error,    setError]    = useState('')
   const [loading,  setLoading]  = useState(false)
 
-  // ✅ Login email/password — baca role dari Firestore lalu redirect
-  const handleLogin = async () => {
+  // ✅ Login email/password — SAVE JWT TOKEN
+    const handleLogin = async () => {
     if (!email || !password) { setError('Email dan password wajib diisi!'); return }
     setError(''); setLoading(true)
     try {
-      const cred         = await signInWithEmailAndPassword(auth, email, password)
+      // STEP 1: Login ke Backend (dapatkan JWT token)
+      console.log('1️⃣ Logging in to backend...')
+      
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+      
+      const backendRes = await fetch(`${apiUrl}/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email, password })
+      })
+
+      const backendData = await backendRes.json()
+
+      if (!backendRes.ok) {
+        setError(backendData.message || 'Login gagal')
+        setLoading(false)
+        return
+      }
+
+      // STEP 2: Simpan JWT token ke localStorage
+      if (backendData.token) {
+        localStorage.setItem('token', backendData.token)
+        console.log('✅ JWT Token saved')
+      }
+
+      // STEP 3: Login ke Firebase juga
+      console.log('2️⃣ Logging in to Firebase...')
+      const cred = await signInWithEmailAndPassword(auth, email, password)
       const firebaseUser = cred.user
-      const userDoc      = await getDoc(doc(db, 'users', firebaseUser.uid))
-      const userData     = userDoc.exists() ? userDoc.data() : { role: 'user' }
+      const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid))
+      const userData = userDoc.exists() ? userDoc.data() : { role: 'user' }
 
       if (userDoc.exists()) {
         await updateDoc(doc(db, 'users', firebaseUser.uid), { status: 'online' })
       }
 
-      // ✅ Redirect berdasarkan role dari Firestore
+      // STEP 4: Redirect
+      console.log('3️⃣ Redirecting...')
       if (userData.role === 'admin') navigate('/admin/dashboard')
       else navigate('/user/dashboard')
 
     } catch (err) {
+      console.error('❌ Login error:', err)
       if (err.code === 'auth/invalid-credential' || err.code === 'auth/wrong-password') setError('Email atau password salah!')
       else if (err.code === 'auth/user-not-found')   setError('Email tidak terdaftar!')
       else if (err.code === 'auth/too-many-requests') setError('Terlalu banyak percobaan. Coba lagi nanti.')
       else setError(err.message || 'Login gagal!')
     } finally { setLoading(false) }
   }
-
-  // ✅ Login Google
+  
+  // ✅ Login Google — SAVE TOKEN
   const handleGoogleLogin = async () => {
     setError(''); setLoading(true)
     try {
-      const result       = await signInWithPopup(auth, googleProvider)
+      const result = await signInWithPopup(auth, googleProvider)
       const firebaseUser = result.user
-      const userDoc      = await getDoc(doc(db, 'users', firebaseUser.uid))
+      const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid))
       let role = 'user'
 
       if (!userDoc.exists()) {
-        await setDoc(doc(db, 'users', firebaseUser.uid), {
-          name: firebaseUser.displayName || firebaseUser.email.split('@')[0],
-          email: firebaseUser.email, role: 'user',
-          points: 0, monthly_points: 0, level: 'Eco-Newbie',
-          status: 'online', medal: '', last_reset: null,
-          created_at: new Date().toISOString()
-        })
+        // User baru dari Google, backend akan create di Firestore
       } else {
         role = userDoc.data().role || 'user'
         await updateDoc(doc(db, 'users', firebaseUser.uid), { status: 'online' })
       }
 
+      // 2. Get Firebase ID Token dan simpan
+      const idToken = await firebaseUser.getIdToken()
+      localStorage.setItem('token', idToken)
+      console.log('✅ Firebase ID Token saved to localStorage')
+
+      // ✅ Redirect
       if (role === 'admin') navigate('/admin/dashboard')
       else navigate('/user/dashboard')
 
     } catch (err) {
+      console.error('❌ Google login error:', err)
       if (err.code === 'auth/popup-closed-by-user') setError('Popup login ditutup.')
       else setError(err.message || 'Gagal login dengan Google!')
     } finally { setLoading(false) }

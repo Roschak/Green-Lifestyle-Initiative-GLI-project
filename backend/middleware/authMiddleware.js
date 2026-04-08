@@ -1,34 +1,27 @@
-// middleware/authMiddleware.js
+// backend/middleware/authMiddleware.js
 const jwt = require('jsonwebtoken');
 const db = require('../config/db');
 
 const protect = async (req, res, next) => {
-    console.log('=== AUTH CHECK ===');
-
-    const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-        console.log('❌ TOKEN TIDAK ADA');
-        return res.status(401).json({ 
-            success: false, 
-            message: 'Akses ditolak, token tidak ditemukan!' 
-        });
-    }
-
-    const token = authHeader.split(' ')[1];
-
     try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
-        console.log('✅ TOKEN VALID, uid:', decoded.id);
+        const authHeader = req.headers.authorization;
+        
+        if (!authHeader || !authHeader.startsWith('Bearer ')) {
+            console.log('❌ No token provided');
+            return res.status(401).json({ success: false, message: 'Token tidak ditemukan' });
+        }
 
-        // Ambil data user dari Firestore
+        const token = authHeader.split(' ')[1];
+        console.log('🔍 Verifying token');
+
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'secret');
+        console.log('✅ Token verified, user ID:', decoded.id);
+
         const userDoc = await db.collection('users').doc(decoded.id).get();
 
         if (!userDoc.exists) {
-            console.log('❌ USER NOT FOUND IN FIRESTORE');
-            return res.status(404).json({ 
-                success: false, 
-                message: 'User tidak ditemukan' 
-            });
+            console.log('❌ User not found in Firestore');
+            return res.status(404).json({ success: false, message: 'User tidak ditemukan' });
         }
 
         const userData = userDoc.data();
@@ -40,37 +33,20 @@ const protect = async (req, res, next) => {
             name: userData.name
         };
 
-        console.log('✅ USER ROLE:', req.user.role);
+        console.log('✅ Auth success:', req.user.email);
         next();
+
     } catch (error) {
-        console.error('❌ TOKEN ERROR:', error.message);
-        return res.status(401).json({ 
-            success: false, 
-            message: 'Sesi tidak valid, silakan login ulang!' 
-        });
+        console.error('❌ Auth error:', error.message);
+        return res.status(401).json({ success: false, message: 'Token tidak valid' });
     }
 };
 
 const adminOnly = (req, res, next) => {
-    console.log('=== ADMIN CHECK ===');
-
-    if (!req.user) {
-        console.log('❌ USER TIDAK TERAUTENTIKASI');
-        return res.status(401).json({ 
-            success: false, 
-            message: 'User tidak terautentikasi' 
-        });
+    if (!req.user || req.user.role !== 'admin') {
+        console.log('❌ Not admin');
+        return res.status(403).json({ success: false, message: 'Anda tidak memiliki akses admin' });
     }
-
-    if (req.user.role !== 'admin') {
-        console.log(`❌ USER ${req.user.id} BUKAN ADMIN (role: ${req.user.role})`);
-        return res.status(403).json({ 
-            success: false, 
-            message: 'Anda tidak memiliki akses admin!' 
-        });
-    }
-
-    console.log(`✅ ADMIN AKSES: ${req.user.id}`);
     next();
 };
 

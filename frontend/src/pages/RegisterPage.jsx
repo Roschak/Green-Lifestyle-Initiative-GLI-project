@@ -4,11 +4,10 @@ import { Eye, EyeOff, ArrowLeft } from 'lucide-react'
 import { auth, googleProvider, db } from '../config/firebase_config'
 import { createUserWithEmailAndPassword, signInWithPopup, updateProfile } from 'firebase/auth'
 import { doc, setDoc, getDoc } from 'firebase/firestore'
-import { useAuth } from '../context/AuthContext'
+import axios from 'axios'
 
 export default function RegisterPage() {
   const navigate = useNavigate()
-  const { login } = useAuth()
   const [showPass, setShowPass] = useState(false)
   const [showConf, setShowConf] = useState(false)
   const [form, setForm] = useState({ email: '', password: '', confirm: '' })
@@ -17,13 +16,12 @@ export default function RegisterPage() {
   const [success, setSuccess] = useState('')
   const [loading, setLoading] = useState(false)
 
-  // ✅ Handle register biasa (LANGSUNG KE FIREBASE)
+  // ✅ Handle register biasa + SAVE JWT TOKEN
   const handleRegister = async () => {
     setError('')
     setSuccess('')
     setLoading(true)
 
-    // Validasi
     if (!form.email || !form.password) {
       setError('Semua field wajib diisi!')
       setLoading(false)
@@ -49,42 +47,52 @@ export default function RegisterPage() {
     }
 
     try {
-      // 1. Buat user di Firebase Auth
+      // 1. Register ke backend (simpan user di Firestore)
+      const backendRes = await axios.post('http://localhost:5000/api/auth/register', {
+        name: form.email.split('@')[0],
+        email: form.email,
+        password: form.password
+      })
+
+      console.log('✅ Backend registration success')
+
+      // 2. Create user di Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(auth, form.email, form.password)
       const firebaseUser = userCredential.user
 
-      // 2. Update profile dengan nama (dari email)
+      // 3. Update profile
       const name = form.email.split('@')[0]
       await updateProfile(firebaseUser, { displayName: name })
 
-      // 3. Simpan data user ke Firestore
+      // 4. Simpan ke Firestore juga
       await setDoc(doc(db, 'users', firebaseUser.uid), {
         email: form.email,
         name: name,
         role: 'user',
         provider: 'email',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        points: 0,
+        monthly_points: 0,
+        level: 'Eco-Newbie',
+        medal: '',
+        status: 'offline',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
       })
 
-      // 4. Dapatkan token
+      // 5. Get Firebase ID Token dan simpan ke localStorage
       const idToken = await firebaseUser.getIdToken()
-
-      // 5. Simpan ke context
-      login({
-        uid: firebaseUser.uid,
-        email: form.email,
-        name: name,
-        role: 'user'
-      }, idToken)
+      localStorage.setItem('token', idToken)
+      console.log('✅ Firebase ID Token saved to localStorage')
 
       setSuccess('Registrasi berhasil! Mengalihkan...')
       setTimeout(() => navigate('/user/dashboard'), 1500)
 
     } catch (err) {
-      console.error('Register error:', err.code, err.message)
+      console.error('❌ Register error:', err)
 
-      if (err.code === 'auth/email-already-in-use') {
+      if (err.response?.data?.message) {
+        setError(err.response.data.message)
+      } else if (err.code === 'auth/email-already-in-use') {
         setError('Email sudah terdaftar. Silakan login.')
         setTimeout(() => navigate('/login'), 2000)
       } else if (err.code === 'auth/invalid-email') {
@@ -99,48 +107,42 @@ export default function RegisterPage() {
     }
   }
 
-  // ✅ Handle register dengan Google
+  // ✅ Handle register dengan Google + SAVE TOKEN
   const handleGoogleRegister = async () => {
     setError('')
     setLoading(true)
 
     try {
-      // Popup Google via Firebase
       const result = await signInWithPopup(auth, googleProvider)
       const firebaseUser = result.user
 
-      // Cek apakah user sudah ada di Firestore
       const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid))
 
       let role = 'user'
       if (!userDoc.exists()) {
-        // User baru, simpan ke Firestore
         await setDoc(doc(db, 'users', firebaseUser.uid), {
           email: firebaseUser.email,
           name: firebaseUser.displayName || firebaseUser.email.split('@')[0],
           role: 'user',
           provider: 'google',
           photoURL: firebaseUser.photoURL,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
+          points: 0,
+          monthly_points: 0,
+          level: 'Eco-Newbie',
+          medal: '',
+          status: 'offline',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
         })
       } else {
         role = userDoc.data().role || 'user'
       }
 
-      // Dapatkan token
+      // Get Firebase ID Token dan simpan
       const idToken = await firebaseUser.getIdToken()
+      localStorage.setItem('token', idToken)
+      console.log('✅ Firebase ID Token saved to localStorage')
 
-      // Simpan ke context
-      login({
-        uid: firebaseUser.uid,
-        email: firebaseUser.email,
-        name: firebaseUser.displayName || firebaseUser.email.split('@')[0],
-        role: role,
-        photoURL: firebaseUser.photoURL
-      }, idToken)
-
-      // Redirect berdasarkan role
       if (role === 'admin') {
         navigate('/admin/dashboard')
       } else {
@@ -148,7 +150,7 @@ export default function RegisterPage() {
       }
 
     } catch (err) {
-      console.error('Google Register Error:', err.code, err.message)
+      console.error('❌ Google Register Error:', err)
 
       if (err.code === 'auth/popup-closed-by-user') {
         setError('Login Google dibatalkan.')
@@ -181,7 +183,7 @@ export default function RegisterPage() {
           {/* ✅ TOMBOL BACK - GLASS EFFECT */}
           <button
             onClick={() => navigate(-1)}
-            className="absolute top-8 left-8 flex items-center gap-2 px-4 py-2 rounded-xl backdrop-blur-md bg-white/10 border border-white/20 text-white hover:bg-white/20 transition-all duration-300 z-20"
+            className="absolute top-8 left-8 flex items-center gap-2 px-4 py-2 rounded-xl backdrop-blur-md bg-white/10 border border-white/20 text-white hover:bg-white/20 transition-all z-20"
           >
             <ArrowLeft size={18} />
             <span className="text-sm font-medium">Back</span>
@@ -278,8 +280,7 @@ export default function RegisterPage() {
             <div className="flex items-center gap-3 mb-5">
               <div
                 onClick={() => !loading && setAgree(!agree)}
-                className={`w-5 h-5 rounded flex items-center justify-center cursor-pointer flex-shrink-0 transition-all ${agree ? 'bg-green-500 border-green-500' : 'border-2 border-white/50 hover:border-white/80'
-                  }`}
+                className={`w-5 h-5 rounded flex items-center justify-center cursor-pointer flex-shrink-0 transition-all ${agree ? 'bg-green-500 border-green-500' : 'border-2 border-white/50 hover:border-white'}`}
               >
                 {agree && <span className="text-white text-xs font-black">✓</span>}
               </div>
@@ -299,7 +300,7 @@ export default function RegisterPage() {
             <button
               onClick={handleRegister}
               disabled={loading || !agree || !form.email || !form.password || !form.confirm}
-              className="w-full py-4 rounded-full text-white font-bold text-base cursor-pointer mb-4 transition-all hover:opacity-90 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100"
+              className="w-full py-4 rounded-full text-white font-bold text-base cursor-pointer mb-4 transition-all hover:opacity-90 hover:scale-[1.02] disabled:opacity-50 disabled:cursor-not-allowed"
               style={{ background: '#1B4332' }}
             >
               {loading ? 'Processing...' : 'Create account'}
@@ -316,7 +317,7 @@ export default function RegisterPage() {
             <button
               onClick={handleGoogleRegister}
               disabled={loading}
-              className="w-full py-3 rounded-full text-white text-sm font-semibold cursor-pointer mb-5 flex items-center justify-center gap-2 hover:bg-white/20 transition-all disabled:opacity-50 group"
+              className="w-full py-3 rounded-full text-white text-sm font-semibold cursor-pointer mb-5 flex items-center justify-center gap-2 hover:bg-white/20 transition-all disabled:opacity-50"
               style={{ background: 'rgba(255,255,255,0.13)', border: '1px solid rgba(255,255,255,0.26)' }}
             >
               <svg width="18" height="18" viewBox="0 0 24 24" className="group-hover:scale-110 transition-transform">

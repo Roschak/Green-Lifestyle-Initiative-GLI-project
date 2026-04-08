@@ -2,22 +2,64 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 
-const authRoutes  = require('./routes/authRoutes');
-const userRoutes  = require('./routes/userRoutes');
+// ✅ INITIALIZE DATABASE DULU
+const db = require('./config/db');
+
+const authRoutes = require('./routes/authRoutes');
+const userRoutes = require('./routes/userRoutes');
 const adminRoutes = require('./routes/adminRoutes');
-const eventRoutes = require('./routes/eventRoutes'); // ✅ NEW
+const eventRoutes = require('./routes/eventRoutes');
 
 const app = express();
 
-app.use(cors());
+// ✅ CORS CONFIGURATION
+const corsOptions = {
+  origin: [
+    'http://localhost:5173',
+    'http://localhost:3000',
+    'http://localhost:5000',
+    'https://gli-frontend.vercel.app',
+    'https://*.vercel.app'
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+};
+
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static('uploads'));
 
-app.use('/api/auth',   authRoutes);
-app.use('/api/user',   userRoutes);
-app.use('/api/admin',  adminRoutes);
-app.use('/api/events', eventRoutes); // ✅ NEW
+// ✅ ROUTES
+app.use('/api/auth', authRoutes);
+app.use('/api/user', userRoutes);
+app.use('/api/admin', adminRoutes);
+app.use('/api/events', eventRoutes);
+
+// ✅ HEALTH CHECK
+app.get('/health', (req, res) => {
+  res.json({ status: 'OK', message: '🚀 Backend is running' });
+});
+
+// ✅ 404 HANDLER
+app.use((req, res) => {
+  res.status(404).json({ success: false, message: 'Route not found' });
+});
+
+// ✅ ERROR HANDLER
+app.use((err, req, res, next) => {
+  console.error('❌ Server Error:', err);
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || 'Internal Server Error',
+    error: process.env.NODE_ENV === 'development' ? err : {}
+  });
+});
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`🚀 Backend jalan di http://localhost:${PORT}`));
+app.listen(PORT, () => {
+  console.log(`🚀 Backend running on http://localhost:${PORT}`);
+  console.log(`✅ Firebase initialized`);
+  console.log(`✅ CORS enabled for development`);
+});
