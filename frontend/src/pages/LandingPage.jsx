@@ -9,6 +9,15 @@ const BG_IMAGE = '/images/ricefields.jpeg'
 const fmt = (d) => !d ? '-' : new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
 const fmtDT = (d) => !d ? '-' : new Date(d).toLocaleString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 
+// Helper to get correct image URL
+const getImageUrl = (img) => {
+  if (!img || img === 'no-image.jpg') return null
+  if (img.startsWith('http')) return img
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+  const baseUrl = apiUrl.replace('/api', '')
+  return `${baseUrl}${img}`
+}
+
 const STATUS_MAP = {
   roundown: { label: 'Pendaftaran Dibuka', color: 'bg-yellow-400 text-yellow-900' },
   dilaksanakan: { label: 'Sedang Berlangsung', color: 'bg-green-400 text-green-900' },
@@ -18,7 +27,7 @@ const STATUS_MAP = {
 // Komponen Thumbnail reusable
 const EventThumb = ({ event, className = 'w-full h-full' }) => (
   event.thumbnail_type === 'image' && event.thumbnail
-    ? <img src={event.thumbnail.startsWith('http') ? event.thumbnail : `http://localhost:5000${event.thumbnail}`} className={`${className} object-cover`} />
+    ? <img src={getImageUrl(event.thumbnail)} className={`${className} object-cover`} />
     : <div className={`${className} flex items-center justify-center`} style={{ background: event.thumbnail_color || '#22c55e' }}>
       <p className="text-white font-black text-xl text-center px-4 drop-shadow">{event.thumbnail_text || event.title}</p>
     </div>

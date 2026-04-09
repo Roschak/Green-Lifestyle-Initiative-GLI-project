@@ -4,7 +4,7 @@ import { Eye, EyeOff, ArrowLeft } from 'lucide-react'
 import { auth, googleProvider, db } from '../config/firebase_config'
 import { createUserWithEmailAndPassword, signInWithPopup, updateProfile } from 'firebase/auth'
 import { doc, setDoc, getDoc } from 'firebase/firestore'
-import axios from 'axios'
+import api from '../services/api'
 
 export default function RegisterPage() {
   const navigate = useNavigate()
@@ -48,7 +48,7 @@ export default function RegisterPage() {
 
     try {
       // 1. Register ke backend (simpan user di Firestore)
-      const backendRes = await axios.post('http://localhost:5000/api/auth/register', {
+      const backendRes = await api.post('/auth/register', {
         name: form.email.split('@')[0],
         email: form.email,
         password: form.password

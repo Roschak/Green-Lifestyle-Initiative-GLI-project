@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import AdminSidebar from '../../components/AdminSidebar'
 import { Shield, CheckCircle, XCircle, Clock, Users, Mail, BadgeCheck, Activity } from 'lucide-react'
-import axios from 'axios'
+import api from '../../services/api'
 
 const BG = 'linear-gradient(180deg, #004D40 0%, #2E7D32 100%)'
 
@@ -15,10 +15,7 @@ export default function AdminProfil() {
   const fetchStats = async () => {
     setLoading(true)
     try {
-      const token = localStorage.getItem('token')
-      const res = await axios.get('http://localhost:5000/api/admin/profile/stats', {
-        headers: { Authorization: `Bearer ${token}` }
-      })
+      const res = await api.get('/admin/profile/stats')
       setStats(res.data)
     } catch (err) {
       console.error('Gagal ambil stats admin:', err)

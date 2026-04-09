@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import UserSidebar from '../../components/UserSidebar'
 import { Share2, RefreshCcw, X, MapPin, Calendar, Star, CheckCircle, XCircle } from 'lucide-react'
 import { useAuth } from '../../context/AuthContext'
-import axios from 'axios'
+import api from '../../services/api'
 
 const BG = 'linear-gradient(180deg, #004D40 0%, #2E7D32 100%)'
 
@@ -23,6 +23,15 @@ const fmt = (d) => {
     dt = new Date(d)
   }
   return isNaN(dt) ? d : dt.toLocaleDateString('id-ID', { day: '2-digit', month: 'long', year: 'numeric' })
+}
+
+// Helper to get correct image URL
+const getImageUrl = (img) => {
+  if (!img || img === 'no-image.jpg') return null
+  if (img.startsWith('http')) return img // Already full URL
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+  const baseUrl = apiUrl.replace('/api', '')
+  return `${baseUrl}${img}`
 }
 
 export default function UserRiwayat() {
@@ -45,16 +54,7 @@ export default function UserRiwayat() {
         return
       }
 
-      const token = await getToken()
-      if (!token) {
-        console.log('No token available')
-        return
-      }
-
-      const res = await axios.get(
-        `http://localhost:5000/api/user/actions/${userId}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      )
+      const res = await api.get(`/user/actions/${userId}`)
       setActions(res.data)
     } catch (err) {
       console.error('Fetch error:', err)
@@ -135,7 +135,7 @@ export default function UserRiwayat() {
                         onClick={() => item.img && item.img !== 'no-image.jpg' && setDetailModal(item)}
                       >
                         {item.img && item.img !== 'no-image.jpg'
-                          ? <img src={item.img.startsWith('http') ? item.img : `http://localhost:5000${item.img}`} alt="" className="w-full h-full object-cover" />
+                          ? <img src={getImageUrl(item.img)} alt="" className="w-full h-full object-cover" />
                           : <span className="text-2xl">🌿</span>
                         }
                       </div>
@@ -217,7 +217,7 @@ export default function UserRiwayat() {
             <div className="relative">
               {detailModal.img && detailModal.img !== 'no-image.jpg' ? (
                 <img
-                  src={detailModal.img.startsWith('http') ? detailModal.img : `http://localhost:5000${detailModal.img}`}
+                  src={getImageUrl(detailModal.img)}
                   alt={detailModal.action_name}
                   className="w-full h-52 object-cover"
                 />

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { LayoutDashboard, Leaf, History, Trophy, LogOut, Mail, Star, X, CheckCircle, XCircle, Clock, Medal, User, CalendarDays } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import axios from 'axios'
+import api from '../services/api'
 
 const MEDAL_EMOJI = {
   'PAHLAWAN ENERGI': '⚡', 'HEMAT AIR': '💧', 'DAUR ULANG': '♻️',
@@ -20,10 +20,7 @@ export default function UserSidebar() {
   useEffect(() => {
     if (showPopup && !profile && user?.id) {
       setLoading(true)
-      const token = localStorage.getItem('token')
-      axios.get(`http://localhost:5000/api/user/profile/${user.id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      })
+      api.get(`/user/profile/${user.id}`)
         .then(res => setProfile(res.data))
         .catch(err => console.error('Gagal ambil profil:', err))
         .finally(() => setLoading(false))

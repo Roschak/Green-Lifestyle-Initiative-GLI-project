@@ -6,6 +6,15 @@ import { getAllActions, verifyAction } from '../../services/api'
 
 const BG = 'linear-gradient(180deg, #004D40 0%, #2E7D32 100%)'
 
+// Helper to get correct image URL
+const getImageUrl = (img) => {
+  if (!img || img === 'no-image.jpg') return null
+  if (img.startsWith('http')) return img
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+  const baseUrl = apiUrl.replace('/api', '')
+  return `${baseUrl}${img}`
+}
+
 // --- KOMPONEN HEADER SEKSI ---
 const SectionHeader = ({ title, type, color, count, searchValue, onSearchChange, dateValue, onDateChange }) => (
   <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
@@ -40,9 +49,7 @@ const SectionHeader = ({ title, type, color, count, searchValue, onSearchChange,
 // ✅ Komponen foto - tampilkan gambar kalau ada, icon kalau tidak ada
 const ActionPhoto = ({ img, actionName, onClick }) => {
   const [imgError, setImgError] = useState(false)
-  const imgUrl = img && img !== 'no-image.jpg'
-    ? (img.startsWith('http') ? img : `http://localhost:5000${img}`)
-    : null
+  const imgUrl = getImageUrl(img)
 
   if (imgUrl && !imgError) {
     return (
@@ -251,7 +258,7 @@ export default function AdminModerasi() {
             <div className="bg-white rounded-[32px] overflow-hidden shadow-2xl">
               {photoModal.img && photoModal.img !== 'no-image.jpg' ? (
                 <img
-                  src={`http://localhost:5000${photoModal.img}`}
+                  src={getImageUrl(photoModal.img)}
                   alt={photoModal.action_name}
                   className="w-full max-h-[70vh] object-contain"
                 />
@@ -281,7 +288,7 @@ export default function AdminModerasi() {
             {verifModal.img && verifModal.img !== 'no-image.jpg' && (
               <div className="mb-6 rounded-2xl overflow-hidden max-h-48">
                 <img
-                  src={`http://localhost:5000${verifModal.img}`}
+                  src={getImageUrl(verifModal.img)}
                   alt={verifModal.action_name}
                   className="w-full h-48 object-cover"
                 />
@@ -358,7 +365,7 @@ export default function AdminModerasi() {
             {detailModal.img && detailModal.img !== 'no-image.jpg' && (
               <div className="mb-4 rounded-2xl overflow-hidden">
                 <img
-                  src={`http://localhost:5000${detailModal.img}`}
+                  src={getImageUrl(detailModal.img)}
                   alt={detailModal.action_name}
                   className="w-full h-48 object-cover"
                 />

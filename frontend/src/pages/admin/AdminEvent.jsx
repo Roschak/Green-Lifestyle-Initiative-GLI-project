@@ -6,6 +6,15 @@ import api from '../../services/api'
 
 const BG = 'linear-gradient(180deg, #004D40 0%, #2E7D32 100%)'
 
+// Helper to get correct image URL
+const getImageUrl = (img) => {
+  if (!img || img === 'no-image.jpg') return null
+  if (img.startsWith('http')) return img
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+  const baseUrl = apiUrl.replace('/api', '')
+  return `${baseUrl}${img}`
+}
+
 const STATUS_LABEL = {
   roundown: { label: 'Pendaftaran', color: 'bg-yellow-400 text-yellow-900' },
   dilaksanakan: { label: 'Berlangsung', color: 'bg-green-400 text-green-900' },
@@ -23,7 +32,7 @@ const fmt = (d) => !d ? '-' : new Date(d).toLocaleDateString('id-ID', { day: 'nu
 // Thumbnail reusable
 const EventThumb = ({ event, className = 'w-full h-full' }) => (
   event.thumbnail_type === 'image' && event.thumbnail
-    ? <img src={event.thumbnail.startsWith('http') ? event.thumbnail : `http://localhost:5000${event.thumbnail}`} className={`${className} object-cover`} />
+    ? <img src={getImageUrl(event.thumbnail)} className={`${className} object-cover`} />
     : <div className={`${className} flex items-center justify-center`} style={{ background: event.thumbnail_color || '#22c55e' }}>
       <p className="text-white font-black text-lg text-center px-3">{event.thumbnail_text || event.title}</p>
     </div>
@@ -73,7 +82,7 @@ export default function AdminEvent() {
       setAllEvents(allRes.data || [])
       const data = myRes.data || {}
       setMyEvents(data)
-    } catch (err) { 
+    } catch (err) {
       console.error('❌ Gagal fetch:', err)
       console.error('❌ Error response:', err.response?.data)
     }
@@ -95,10 +104,10 @@ export default function AdminEvent() {
       const data = new FormData()
       Object.entries(form).forEach(([k, v]) => data.append(k, v))
       if (thumbFile) data.append('thumbnail', thumbFile)
-      
+
       const res = await api.post('/events/create', data)
       console.log('✅ Event created:', res.data);
-      
+
       setCreateModal(false)
       setForm({
         title: '', description: '', wa_link: '', location: '', medal_name: 'Medali Sosialisasi',
@@ -108,7 +117,7 @@ export default function AdminEvent() {
       setThumbFile(null); setThumbPreview(null)
       fetchAll()
       alert('✅ Event berhasil dibuat!')
-    } catch (err) { 
+    } catch (err) {
       console.error('Create error:', err)
       alert(err.response?.data?.message || 'Gagal membuat event')
     }
@@ -381,8 +390,8 @@ export default function AdminEvent() {
                       </td>
                       <td className="py-3 px-4">
                         {reg.proof_img ? (
-                          <a href={`http://localhost:5000${reg.proof_img}`} target="_blank" rel="noreferrer" className="w-10 h-10 rounded-xl overflow-hidden block border border-gray-200 hover:opacity-80">
-                            <img src={`http://localhost:5000${reg.proof_img}`} className="w-full h-full object-cover" />
+                          <a href={getImageUrl(reg.proof_img)} target="_blank" rel="noreferrer" className="w-10 h-10 rounded-xl overflow-hidden block border border-gray-200 hover:opacity-80">
+                            <img src={getImageUrl(reg.proof_img)} className="w-full h-full object-cover" />
                           </a>
                         ) : <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center text-gray-300"><Camera size={14} /></div>}
                       </td>

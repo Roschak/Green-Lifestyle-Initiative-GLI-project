@@ -14,17 +14,14 @@ const protect = async (req, res, next) => {
         const token = authHeader.split(' ')[1];
         console.log('🔍 Verifying Firebase token, length:', token.length);
 
-        // ✅ Verify Firebase token using Admin SDK
+        // ✅ Verify Firebase ID token
         const decoded = await admin.auth().verifyIdToken(token);
         console.log('✅ Firebase token verified, user ID:', decoded.uid);
-        console.log('✅ Token email:', decoded.email);
-        console.log('✅ Token issued at:', new Date(decoded.iat * 1000));
-        console.log('✅ Token expires at:', new Date(decoded.exp * 1000));
 
         const userDoc = await db.collection('users').doc(decoded.uid).get();
 
         if (!userDoc.exists) {
-            console.log('❌ User not found in Firestore');
+            console.log('❌ User not found in Firestore:', decoded.uid);
             return res.status(404).json({ success: false, message: 'User tidak ditemukan' });
         }
 

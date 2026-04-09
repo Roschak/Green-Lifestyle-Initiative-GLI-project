@@ -7,6 +7,15 @@ import api from '../../services/api'
 
 const BG = 'linear-gradient(180deg, #004D40 0%, #2E7D32 100%)'
 
+// Helper to get correct image URL
+const getImageUrl = (img) => {
+  if (!img || img === 'no-image.jpg') return null
+  if (img.startsWith('http')) return img
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
+  const baseUrl = apiUrl.replace('/api', '')
+  return `${baseUrl}${img}`
+}
+
 const STATUS_LABEL = {
   roundown: { label: 'Pendaftaran', color: 'bg-yellow-400 text-yellow-900' },
   dilaksanakan: { label: 'Berlangsung', color: 'bg-green-400 text-green-900' },
@@ -184,7 +193,7 @@ export default function UserEvent() {
                       <div key={event.id} className="border border-gray-100 rounded-[24px] overflow-hidden hover:shadow-md transition">
                         <div className="h-32 relative">
                           {event.thumbnail_type === 'image' && event.thumbnail ? (
-                            <img src={event.thumbnail.startsWith('http') ? event.thumbnail : `http://localhost:5000${event.thumbnail}`} className="w-full h-full object-cover" />
+                            <img src={getImageUrl(event.thumbnail)} className="w-full h-full object-cover" />
                           ) : (
                             <div className="w-full h-full flex items-center justify-center" style={{ background: event.thumbnail_color }}>
                               <p className="text-white font-black text-lg text-center px-3">{event.thumbnail_text || event.title}</p>
@@ -427,8 +436,8 @@ export default function UserEvent() {
                       </td>
                       <td className="py-3 px-4">
                         {reg.proof_img ? (
-                          <a href={`http://localhost:5000${reg.proof_img}`} target="_blank" rel="noreferrer" className="w-10 h-10 rounded-xl overflow-hidden block border">
-                            <img src={`http://localhost:5000${reg.proof_img}`} className="w-full h-full object-cover" />
+                          <a href={getImageUrl(reg.proof_img)} target="_blank" rel="noreferrer" className="w-10 h-10 rounded-xl overflow-hidden block border">
+                            <img src={getImageUrl(reg.proof_img)} className="w-full h-full object-cover" />
                           </a>
                         ) : <span className="text-gray-300 text-[10px]">-</span>}
                       </td>

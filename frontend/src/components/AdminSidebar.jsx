@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { LayoutDashboard, Shield, Users, LogOut, Mail, BadgeCheck, X, CheckCircle, XCircle, Clock, User, CalendarDays } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import axios from 'axios'
+import api from '../services/api'
 
 export default function AdminSidebar() {
   const navigate  = useNavigate()
@@ -15,10 +15,7 @@ export default function AdminSidebar() {
   useEffect(() => {
     if (showPopup && !adminStats) {
       setLoading(true)
-      const token = localStorage.getItem('token')
-      axios.get('http://localhost:5000/api/admin/profile/stats', {
-        headers: { Authorization: `Bearer ${token}` }
-      })
+      api.get('/admin/profile/stats')
         .then(res => setAdminStats(res.data))
         .catch(err => console.error('Gagal ambil admin stats:', err))
         .finally(() => setLoading(false))
