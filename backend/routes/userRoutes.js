@@ -11,5 +11,7 @@ router.get('/actions/:id', protect, userController.getUserActions);
 router.get('/profile/:id', protect, userController.getUserProfile);
 // ✅ Public leaderboard - users can view rankings without admin role
 router.get('/leaderboard', userController.getPublicLeaderboard);
+// ✅ NEW: Heartbeat - Update last_activity untuk auto-offline
+router.post('/heartbeat', protect, userController.heartbeat);
 
 module.exports = router;

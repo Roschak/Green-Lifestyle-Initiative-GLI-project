@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import AdminSidebar from '../../components/AdminSidebar'
-import { Bell, Search, Activity, Clock, Users, Loader2, RefreshCw, X, Trophy, Medal, User, Eye } from 'lucide-react'
+import { Bell, Search, Activity, Clock, Users, Loader2, RefreshCw, X, Trophy, Medal, User, Eye, Trash2 } from 'lucide-react'
 
 /** * PERBAIKAN JALUR IMPORT (FULL FIX):
  * Karena AdminMonitoring ada di /src/pages/admin/
@@ -9,6 +9,7 @@ import { Bell, Search, Activity, Clock, Users, Loader2, RefreshCw, X, Trophy, Me
  * Baru masuk ke /service/api
  */
 import { getAllUsers, getUserDetail } from '../../services/api'
+import api from '../../services/api'
 
 const BG = 'linear-gradient(180deg, #004D40 0%, #2E7D32 100%)'
 
@@ -18,6 +19,7 @@ export default function AdminMonitoring() {
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
   const [detailLoadingId, setDetailLoadingId] = useState(null)
+  const [deleting, setDeleting] = useState(false)
 
   const fetchUsers = async () => {
     try {
@@ -45,6 +47,27 @@ export default function AdminMonitoring() {
     setDetailLoadingId(null)
   }
 }
+
+  // ✅ DELETE USER
+  const handleDeleteUser = async () => {
+    if (!selectedUser) return
+    
+    const confirm = window.confirm(`Yakin hapus user "${selectedUser.name}"? Aksi dan data mereka juga akan dihapus!`)
+    if (!confirm) return
+
+    setDeleting(true)
+    try {
+      await api.delete(`/admin/users/${selectedUser.id}`)
+      alert('✅ User berhasil dihapus!')
+      setSelectedUser(null)
+      fetchUsers()
+    } catch (err) {
+      console.error('Error delete user:', err)
+      alert('❌ Gagal hapus user: ' + err.response?.data?.message)
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   useEffect(() => {
     fetchUsers()
@@ -197,12 +220,23 @@ export default function AdminMonitoring() {
               <Medal size={45} className={selectedUser.medal ? "text-yellow-400" : "text-white/10"} />
             </div>
 
-            <button 
-              onClick={() => setSelectedUser(null)}
-              className="w-full mt-8 py-5 bg-gray-900 text-white font-black rounded-3xl text-[11px] uppercase tracking-[0.2em] hover:bg-black transition-all"
-            >
-              Kembali
-            </button>
+            <div className="flex gap-3 mt-8">
+              <button 
+                onClick={() => setSelectedUser(null)}
+                className="flex-1 py-5 bg-gray-900 text-white font-black rounded-3xl text-[11px] uppercase tracking-[0.2em] hover:bg-black transition-all"
+              >
+                Kembali
+              </button>
+              {/* ✅ DELETE BUTTON */}
+              <button 
+                onClick={handleDeleteUser}
+                disabled={deleting}
+                className="flex-1 py-5 bg-red-500 text-white font-black rounded-3xl text-[11px] uppercase tracking-[0.2em] hover:bg-red-600 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                <Trash2 size={14} />
+                {deleting ? 'Menghapus...' : 'Hapus'}
+              </button>
+            </div>
           </div>
         </div>
       )}

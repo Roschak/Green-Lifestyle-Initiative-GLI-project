@@ -63,6 +63,8 @@ export const getUserStats = (id) => api.get(`/user/stats/${id}`)
 export const getUserProfile = (id) => api.get(`/user/profile/${id}`)
 // ✅ NEW: Public leaderboard (no admin required)
 export const getPublicLeaderboard = () => api.get('/user/leaderboard')
+// ✅ NEW: Heartbeat untuk auto-offline
+export const sendHeartbeat = () => api.post('/user/heartbeat')
 
 // ADMIN
 export const getDashboardStats = () => api.get('/admin/stats')

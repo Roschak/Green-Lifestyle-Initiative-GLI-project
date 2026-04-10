@@ -8,6 +8,7 @@ router.get('/stats', protect, adminOnly, adminController.getDashboardStats);
 router.get('/profile/stats', protect, adminOnly, adminController.getAdminStats);
 router.get('/users', protect, adminOnly, adminController.getUsers);
 router.get('/users/:id', protect, adminOnly, adminController.getUserDetail);
+router.delete('/users/:id', protect, adminOnly, adminController.deleteUser); // ✅ NEW: Delete user
 router.get('/actions', protect, adminOnly, adminController.getAllActions);
 router.put('/actions/:id', protect, adminOnly, adminController.verifyAction);
 // ✅ KEEP: Admin leaderboard (untuk admin dashboard - top performer)

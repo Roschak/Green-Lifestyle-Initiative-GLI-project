@@ -283,3 +283,36 @@ exports.getPublicLeaderboard = async (req, res) => {
         return res.status(500).json({ success: false, message: 'Error fetching leaderboard' });
     }
 };
+
+/**
+ * Heartbeat - Update last_activity untuk tracking user aktif
+ * Frontend call setiap 5 menit, update last_activity timestamp
+ * Admin monitoring: Jika last_activity > 10 menit lalu, set status = offline
+ */
+exports.heartbeat = async (req, res) => {
+    try {
+        const userId = req.user?.id;
+        
+        if (!userId) {
+            return res.status(401).json({ success: false, message: 'User tidak teridentifikasi' });
+        }
+
+        // Update last_activity timestamp
+        await db.collection('users').doc(userId).update({
+            last_activity: admin.firestore.FieldValue.serverTimestamp(),
+            status: 'online'  // Set ke online setiap ada heartbeat
+        });
+
+        console.log(`✅ Heartbeat from user ${userId}`);
+
+        return res.json({
+            success: true,
+            message: 'Heartbeat received',
+            timestamp: new Date().toISOString()
+        });
+
+    } catch (err) {
+        console.error('❌ Heartbeat Error:', err);
+        return res.status(500).json({ success: false, message: 'Error' });
+    }
+};

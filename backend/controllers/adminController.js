@@ -59,9 +59,23 @@ exports.getUsers = async (req, res) => {
     try {
         const snap = await db.collection('users').where('role', '==', 'user').get();
         const users = [];
+        const now = new Date();
+        const OFFLINE_THRESHOLD = 10 * 60 * 1000; // 10 menit dalam milliseconds
 
         snap.forEach(doc => {
             const data = doc.data();
+            
+            // ✅ FIXED: Auto-set offline jika last_activity > 10 menit
+            let status = data.status || 'offline';
+            if (data.last_activity) {
+                const lastActivityTime = data.last_activity.toDate?.() || new Date(data.last_activity);
+                const timeSinceActivity = now - lastActivityTime;
+                
+                if (timeSinceActivity > OFFLINE_THRESHOLD) {
+                    status = 'offline';  // Auto-offline setelah 10 menit
+                }
+            }
+            
             users.push({
                 id: doc.id,
                 name: data.name || '',
@@ -70,7 +84,7 @@ exports.getUsers = async (req, res) => {
                 medal: data.medal || '',
                 points: data.points || 0,
                 monthly_points: data.monthly_points || 0,
-                status: data.status || 'offline'
+                status: status  // Updated status
             });
         });
 
@@ -102,10 +116,29 @@ exports.getUserDetail = async (req, res) => {
         const rejected = actions.filter(a => a.status === 'rejected').length;
         const pending = actions.filter(a => a.status === 'pending').length;
 
-        const rankSnap = await db.collection('users')
-            .where('role', '==', 'user')
-            .where('monthly_points', '>', user.monthly_points || 0)
-            .get();
+        // ✅ FIXED: Calculate ranking dengan fallback untuk composite index
+        let ranking = 1;
+        try {
+            const rankSnap = await db.collection('users')
+                .where('role', '==', 'user')
+                .where('monthly_points', '>', user.monthly_points || 0)
+                .get();
+            ranking = rankSnap.size + 1;
+        } catch (indexErr) {
+            // Fallback: Get semua users dan count manual
+            console.log('📌 Fallback: calculating ranking manually');
+            const allUsersSnap = await db.collection('users')
+                .where('role', '==', 'user')
+                .get();
+
+            let betterCount = 0;
+            allUsersSnap.forEach(doc => {
+                if ((doc.data().monthly_points || 0) > (user.monthly_points || 0)) {
+                    betterCount++;
+                }
+            });
+            ranking = betterCount + 1;
+        }
 
         return res.json({
             id,
@@ -115,7 +148,7 @@ exports.getUserDetail = async (req, res) => {
             monthly_points: user.monthly_points || 0,
             level: user.level || 'Eco-Newbie',
             medal: user.medal || '',
-            ranking: rankSnap.size + 1,
+            ranking,
             total_actions: actions.length,
             approved,
             rejected,
@@ -124,7 +157,7 @@ exports.getUserDetail = async (req, res) => {
 
     } catch (err) {
         console.error('❌ Get User Detail Error:', err);
-        return res.status(500).json({ success: false, message: 'Error' });
+        return res.status(500).json({ success: false, message: 'Error: ' + err.message });
     }
 };
 
@@ -224,28 +257,117 @@ exports.verifyAction = async (req, res) => {
 
 exports.getLeaderboard = async (req, res) => {
     try {
-        const snap = await db.collection('users')
-            .where('role', '==', 'user')
-            .orderBy('monthly_points', 'desc')
-            .limit(10)
-            .get();
+        // Try dengan orderBy dulu (admin leaderboard)
+        try {
+            const snap = await db.collection('users')
+                .where('role', '==', 'user')
+                .orderBy('monthly_points', 'desc')
+                .limit(10)
+                .get();
 
-        const data = [];
-        snap.forEach(doc => {
-            const d = doc.data();
-            data.push({
-                id: doc.id,
-                name: d.name || '',
-                points: d.monthly_points || 0,
-                medal: d.medal || '',
-                level: d.level || 'Eco-Newbie'
+            const data = [];
+            snap.forEach(doc => {
+                const d = doc.data();
+                data.push({
+                    id: doc.id,
+                    name: d.name || '',
+                    points: d.monthly_points || 0,
+                    medal: d.medal || '',
+                    level: d.level || 'Eco-Newbie'
+                });
             });
-        });
 
-        return res.json({ period: 'April 2026', data });
+            return res.json({ period: 'April 2026', data });
+        } catch (indexErr) {
+            // Fallback: Get semua dan sort di memory
+            console.log('📌 Fallback to memory sort for admin leaderboard');
+            const snap = await db.collection('users')
+                .where('role', '==', 'user')
+                .get();
+
+            const data = [];
+            snap.forEach(doc => {
+                const d = doc.data();
+                data.push({
+                    id: doc.id,
+                    name: d.name || '',
+                    points: d.monthly_points || 0,
+                    medal: d.medal || '',
+                    level: d.level || 'Eco-Newbie'
+                });
+            });
+
+            // Sort dan ambil top 10
+            data.sort((a, b) => b.points - a.points);
+            return res.json({ period: 'April 2026', data: data.slice(0, 10) });
+        }
 
     } catch (err) {
         console.error('❌ Leaderboard Error:', err);
         return res.status(500).json({ success: false, message: 'Error' });
+    }
+};
+
+/**
+ * Delete User - Admin bisa hapus user duplikat/inactive
+ * Akan menghapus dari Firestore dan juga dari Firebase Auth
+ * Semua aksi user juga akan dihapus
+ */
+exports.deleteUser = async (req, res) => {
+    try {
+        const { id } = req.params;
+        
+        if (!id) {
+            return res.status(400).json({ success: false, message: 'User ID wajib diisi' });
+        }
+
+        // Validasi user exists
+        const userDoc = await db.collection('users').doc(id).get();
+        if (!userDoc.exists) {
+            return res.status(404).json({ success: false, message: 'User tidak ditemukan' });
+        }
+
+        const userName = userDoc.data().name;
+
+        // Delete semua actions user
+        const actSnap = await db.collection('actions')
+            .where('user_id', '==', id)
+            .get();
+
+        for (const doc of actSnap.docs) {
+            await doc.ref.delete();
+        }
+        console.log(`✅ Deleted ${actSnap.size} actions for user ${id}`);
+
+        // Delete semua event registrations
+        const regSnap = await db.collection('event_registrations')
+            .where('user_id', '==', id)
+            .get();
+
+        for (const doc of regSnap.docs) {
+            await doc.ref.delete();
+        }
+        console.log(`✅ Deleted ${regSnap.size} registrations for user ${id}`);
+
+        // Delete user dari Firestore
+        await db.collection('users').doc(id).delete();
+        console.log(`✅ Deleted user from Firestore: ${id}`);
+
+        // Try delete dari Firebase Auth (optional - mungkin akan error jika user tidak authenticated)
+        try {
+            await admin.auth().deleteUser(id);
+            console.log(`✅ Deleted user from Firebase Auth: ${id}`);
+        } catch (authErr) {
+            console.log(`⚠️ Could not delete from Firebase Auth (user might already be deleted): ${authErr.message}`);
+        }
+
+        return res.json({
+            success: true,
+            message: `User "${userName}" berhasil dihapus`
+        });
+
+    } catch (err) {
+        console.error('❌ Delete User Error:', err);
+        return res.status(500).json({ success: false, message: 'Error: ' + err.message });
     }
 };

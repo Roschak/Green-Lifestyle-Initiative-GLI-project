@@ -10,6 +10,7 @@ import {
   updateProfile
 } from 'firebase/auth'
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
+import { sendHeartbeat } from '../services/api'
 
 const AuthContext = createContext(null)
 
@@ -27,7 +28,8 @@ export function AuthProvider({ children }) {
             const data = userDoc.data()
             await updateDoc(doc(db, 'users', firebaseUser.uid), {
               status: 'online',
-              lastSeen: serverTimestamp()
+              lastSeen: serverTimestamp(),
+              last_activity: serverTimestamp()  // ✅ Initialize last_activity
             })
             setUser({
               uid: firebaseUser.uid,
@@ -48,6 +50,7 @@ export function AuthProvider({ children }) {
               status: 'online',
               medal: '',
               last_reset: null,
+              last_activity: serverTimestamp(),  // ✅ Initialize last_activity
               created_at: new Date().toISOString()
             }
             await setDoc(doc(db, 'users', firebaseUser.uid), newUser)
@@ -70,6 +73,27 @@ export function AuthProvider({ children }) {
     })
     return () => unsubscribe()
   }, [])
+
+  // ✅ HEARTBEAT: Send every 5 minutes
+  useEffect(() => {
+    if (!user) return
+
+    const sendHeartbeatPing = async () => {
+      try {
+        await sendHeartbeat()
+        console.log('💓 Heartbeat sent')
+      } catch (err) {
+        console.error('❌ Heartbeat error:', err)
+      }
+    }
+
+    // Send immediately on login
+    sendHeartbeatPing()
+
+    // Then send every 5 minutes
+    const heartbeatInterval = setInterval(sendHeartbeatPing, 5 * 60 * 1000)
+    return () => clearInterval(heartbeatInterval)
+  }, [user])
 
   const login = async (email, password) => {
     if (typeof email === 'object') return
