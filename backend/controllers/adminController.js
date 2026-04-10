@@ -158,6 +158,15 @@ exports.verifyAction = async (req, res) => {
         const { id } = req.params;
         const { status, points_earned, admin_note, rejection_reason } = req.body;
 
+        if (!['approved', 'rejected'].includes(status)) {
+            return res.status(400).json({ success: false, message: 'Status tidak valid' });
+        }
+
+        // ✅ FIX: Points must be > 0 if approved
+        if (status === 'approved' && (!points_earned || Number(points_earned) <= 0)) {
+            return res.status(400).json({ success: false, message: 'Poin harus lebih dari 0' });
+        }
+
         const actionRef = db.collection('actions').doc(id);
         const actionDoc = await actionRef.get();
 
@@ -173,22 +182,29 @@ exports.verifyAction = async (req, res) => {
         };
 
         if (status === 'approved' && points_earned) {
-            updateData.points_earned = Number(points_earned);
+            const pointsToAdd = Number(points_earned);
+            updateData.points_earned = pointsToAdd;
 
             const userRef = db.collection('users').doc(actionData.user_id);
             const userDoc = await userRef.get();
 
             if (userDoc.exists) {
                 const userData = userDoc.data();
+                const newTotal = (userData.points || 0) + pointsToAdd;
+                const newMonthly = (userData.monthly_points || 0) + pointsToAdd;
+
                 await userRef.update({
-                    points: (userData.points || 0) + Number(points_earned),
-                    monthly_points: (userData.monthly_points || 0) + Number(points_earned)
+                    points: newTotal,
+                    monthly_points: newMonthly
                 });
+
+                console.log(`✅ Points added: +${pointsToAdd} → Total: ${newTotal}`);
             }
         }
 
         if (status === 'rejected' && rejection_reason) {
             updateData.rejection_reason = rejection_reason;
+            updateData.points_earned = 0;
         }
 
         await actionRef.update(updateData);
@@ -202,7 +218,7 @@ exports.verifyAction = async (req, res) => {
 
     } catch (err) {
         console.error('❌ Verify Action Error:', err);
-        return res.status(500).json({ success: false, message: 'Error' });
+        return res.status(500).json({ success: false, message: err.message });
     }
 };
 

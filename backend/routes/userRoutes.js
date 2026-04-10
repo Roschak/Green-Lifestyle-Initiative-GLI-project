@@ -9,5 +9,7 @@ router.post('/actions', protect, upload.single('image'), userController.createAc
 router.get('/stats/:id', protect, userController.getUserStats);
 router.get('/actions/:id', protect, userController.getUserActions);
 router.get('/profile/:id', protect, userController.getUserProfile);
+// ✅ Public leaderboard - users can view rankings without admin role
+router.get('/leaderboard', userController.getPublicLeaderboard);
 
 module.exports = router;

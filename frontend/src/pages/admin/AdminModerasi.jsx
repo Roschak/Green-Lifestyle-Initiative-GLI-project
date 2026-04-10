@@ -281,7 +281,7 @@ export default function AdminModerasi() {
       {verifModal && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setVerifModal(null)} />
-          <div className="relative w-full max-w-lg bg-white rounded-[40px] p-10 shadow-2xl overflow-hidden">
+          <div className="relative w-full max-w-lg max-h-[90vh] bg-white rounded-[40px] p-10 shadow-2xl overflow-y-auto">
             <div className="absolute top-0 left-0 w-full h-2 bg-yellow-400" />
 
             {/* ✅ Tampilkan foto di modal verifikasi juga */}

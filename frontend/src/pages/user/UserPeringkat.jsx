@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import UserSidebar from '../../components/UserSidebar'
 import { useAuth } from '../../context/AuthContext'
-import { getLeaderboard } from '../../services/api'
+import { getPublicLeaderboard } from '../../services/api'
 import { Trophy, Medal, Star, User as UserIcon } from 'lucide-react'
 
 const BG = 'linear-gradient(180deg, #004D40 0%, #2E7D32 100%)'
@@ -20,24 +20,24 @@ export default function UserPeringkat() {
 
   const fetchLeaderboard = async () => {
     try {
-      const res = await getLeaderboard()
-      // Ambil data dari res.data.data karena backend kita kirim { period, data }
+      // ✅ Use public leaderboard endpoint (no admin required)
+      const res = await getPublicLeaderboard()
       const apiData = res.data?.data || []
       setPeriod(res.data?.period || 'Season Baru')
 
-      const mapped = apiData.map((u, i) => ({
+      const mapped = apiData.map((u) => ({
         id: u.id,
-        rank: i + 1,
+        rank: u.rank,
         name: u.name,
         initials: getInitials(u.name),
         aksi: u.total_actions || 0,
         poin: u.points || 0,
-        isMe: u.id === currentUser?.id
+        isMe: u.id === currentUser?.uid
       }))
 
       setLeaderboard(mapped)
     } catch (err) {
-      console.error(err)
+      console.error('❌ Error fetching leaderboard:', err)
     } finally {
       setLoading(false)
     }

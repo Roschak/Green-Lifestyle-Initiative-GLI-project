@@ -61,6 +61,8 @@ export const createAction = (data) => api.post('/user/actions', data)
 export const getMyActions = (id) => api.get(`/user/actions/${id}`)
 export const getUserStats = (id) => api.get(`/user/stats/${id}`)
 export const getUserProfile = (id) => api.get(`/user/profile/${id}`)
+// ✅ NEW: Public leaderboard (no admin required)
+export const getPublicLeaderboard = () => api.get('/user/leaderboard')
 
 // ADMIN
 export const getDashboardStats = () => api.get('/admin/stats')

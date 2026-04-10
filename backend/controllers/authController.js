@@ -132,13 +132,6 @@ exports.login = async (req, res) => {
     }
 };
 
-    } catch (err) {
-        console.error('❌ Login Error:', err.message);
-        console.error('❌ Error stack:', err.stack);
-        return res.status(500).json({ success: false, message: 'Server error: ' + err.message });
-    }
-};
-
 exports.logout = async (req, res) => {
     try {
         const userId = req.user?.id;

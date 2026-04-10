@@ -122,9 +122,9 @@ export default function UserRiwayat() {
                           </p>
                         )}
                         {/* Poin kalau approved */}
-                        {item.status === 'approved' && item.points > 0 && (
+                        {item.status === 'approved' && item.points_earned > 0 && (
                           <div className="mt-2 inline-flex items-center gap-1 bg-green-100 text-green-700 text-[10px] font-black px-2 py-0.5 rounded-full">
-                            <Star size={10} /> +{item.points} Poin
+                            <Star size={10} /> +{item.points_earned} Poin
                           </div>
                         )}
                       </div>
@@ -279,7 +279,7 @@ export default function UserRiwayat() {
                       <CheckCircle size={16} />
                       <span className="text-xs font-black uppercase">Poin Didapat</span>
                     </div>
-                    <span className="font-black text-green-600 text-lg">+{detailModal.points || 0}</span>
+                    <span className="font-black text-green-600 text-lg">+{detailModal.points_earned || 0}</span>
                   </div>
                 )}
 

@@ -33,6 +33,25 @@ const formatDateTime = (d) => {
   return new Date(d).toLocaleString('id-ID', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 }
 
+// Helper to calculate time remaining until deadline
+const getTimeRemaining = (deadline) => {
+  if (!deadline) return null
+  const now = new Date()
+  const end = new Date(deadline)
+  const diff = end - now
+
+  if (diff <= 0) return { text: 'Berakhir', expired: true }
+
+  const hours = Math.floor(diff / (1000 * 60 * 60))
+  const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60))
+  const seconds = Math.floor((diff % (1000 * 60)) / 1000)
+
+  return {
+    text: `${hours}h ${minutes}m ${seconds}s`,
+    expired: false
+  }
+}
+
 export default function UserEvent() {
   const { user } = useAuth()
   const [myEvents, setMyEvents] = useState({ roundown: [], dilaksanakan: [], berakhir: [] })
@@ -56,8 +75,26 @@ export default function UserEvent() {
   const [thumbFile, setThumbFile] = useState(null)
   const [thumbPreview, setThumbPreview] = useState(null)
   const [submitting, setSubmitting] = useState(false)
+  // ✅ State untuk timer countdown
+  const [countdown, setCountdown] = useState({})
 
   useEffect(() => { fetchAll() }, [])
+
+  // ✅ Timer: Update countdown setiap 1 detik
+  useEffect(() => {
+    const timer = setInterval(() => {
+      const newCountdown = {}
+      // Update countdown untuk EVENT SAYA (owner's events)
+      Object.keys(myEvents).forEach(section => {
+        myEvents[section].forEach(event => {
+          newCountdown[event.id] = getTimeRemaining(event.registration_end)
+        })
+      })
+      setCountdown(newCountdown)
+    }, 1000)
+    
+    return () => clearInterval(timer)
+  }, [myEvents])
 
   const fetchAll = async () => {
     setLoading(true)
@@ -210,6 +247,18 @@ export default function UserEvent() {
                           <div className="flex items-center gap-2 text-gray-400 text-[10px] mb-3">
                             <Users size={10} /> {event.total_registered} terdaftar
                           </div>
+                          
+                          {/* ✅ Countdown Timer */}
+                          {event.status === 'roundown' && countdown[event.id] && (
+                            <div className={`text-[10px] font-black mb-3 px-2 py-1 rounded-lg text-center ${
+                              countdown[event.id].expired 
+                                ? 'bg-red-100 text-red-700' 
+                                : 'bg-yellow-100 text-yellow-700'
+                            }`}>
+                              {countdown[event.id].expired ? '⏱️ Pendaftaran Ditutup' : `⏱️ ${countdown[event.id].text}`}
+                            </div>
+                          )}
+                          
                           <div className="flex gap-2">
                             <button onClick={() => { setRegModal(event); fetchRegistrations(event.id) }}
                               className="flex-1 py-2 bg-green-50 text-green-700 text-[10px] font-black rounded-xl hover:bg-green-100 transition">

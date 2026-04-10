@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
 import api from '../services/api'
-import { Calendar, MapPin, Users, X, User, Phone, Mail, CheckCircle, ExternalLink } from 'lucide-react'
+import { Calendar, MapPin, Users, X, User, Phone, Mail, CheckCircle, ExternalLink, Clock } from 'lucide-react'
 
 const BG_IMAGE = '/images/ricefields.jpeg'
 
@@ -45,6 +45,7 @@ export default function LandingPage() {
   const [form, setForm] = useState({ name: '', email: '', phone: '' })
   const [loading, setLoading] = useState(false)
   const [confirmClose, setConfirmClose] = useState(false)
+  const [currentTime, setCurrentTime] = useState(new Date())
 
   useEffect(() => {
     setTimeout(() => setShow([true, false, false]), 500)
@@ -55,6 +56,10 @@ export default function LandingPage() {
     if (user) {
       setForm(f => ({ ...f, name: user.name || '', email: user.email || '' }))
     }
+
+    // ✅ Update time every second
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000)
+    return () => clearInterval(timer)
   }, [user])
 
   const fetchEvents = async () => {
@@ -128,20 +133,29 @@ export default function LandingPage() {
             <a href="#event" className="hover:text-green-300 transition">Event</a>
             <a href="#artikel" className="hover:text-green-300 transition">Artikel</a>
           </div>
-          <div className="flex gap-3 items-center">
-            {user ? (
-              <button onClick={() => navigate(user.role === 'admin' ? '/admin/dashboard' : '/user/dashboard')}
-                className="px-4 py-2 bg-green-600/80 text-white rounded-xl hover:bg-green-700/90 transition font-bold text-sm border border-white/20">
-                Dashboard →
-              </button>
-            ) : (
-              <>
-                <button onClick={() => navigate('/login')} className="text-white hover:text-green-300 font-bold text-sm">Login</button>
-                <button onClick={() => navigate('/register')} className="px-4 py-2 bg-green-600/80 text-white rounded-xl hover:bg-green-700/90 transition font-bold text-sm border border-white/20">
-                  Sign Up
+          <div className="flex gap-6 items-center">
+            {/* ✅ Date & Time Display */}
+            <div className="flex items-center gap-2 text-white/80 text-sm font-semibold">
+              <Clock size={16} />
+              <span>{currentTime.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+              <span className="text-white/50">|</span>
+              <span>{currentTime.toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+            </div>
+            <div className="flex gap-3 items-center">
+              {user ? (
+                <button onClick={() => navigate(user.role === 'admin' ? '/admin/dashboard' : '/user/dashboard')}
+                  className="px-4 py-2 bg-green-600/80 text-white rounded-xl hover:bg-green-700/90 transition font-bold text-sm border border-white/20">
+                  Dashboard →
                 </button>
-              </>
-            )}
+              ) : (
+                <>
+                  <button onClick={() => navigate('/login')} className="text-white hover:text-green-300 font-bold text-sm">Login</button>
+                  <button onClick={() => navigate('/register')} className="px-4 py-2 bg-green-600/80 text-white rounded-xl hover:bg-green-700/90 transition font-bold text-sm border border-white/20">
+                    Sign Up
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </nav>
 

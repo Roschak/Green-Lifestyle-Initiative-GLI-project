@@ -10,6 +10,7 @@ router.get('/users', protect, adminOnly, adminController.getUsers);
 router.get('/users/:id', protect, adminOnly, adminController.getUserDetail);
 router.get('/actions', protect, adminOnly, adminController.getAllActions);
 router.put('/actions/:id', protect, adminOnly, adminController.verifyAction);
+// ✅ KEEP: Admin leaderboard (untuk admin dashboard - top performer)
 router.get('/leaderboard', protect, adminOnly, adminController.getLeaderboard);
 
 module.exports = router;
