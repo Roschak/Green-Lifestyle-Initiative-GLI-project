@@ -4,6 +4,11 @@ require('dotenv').config();
 
 // ✅ INITIALIZE DATABASE DULU
 const db = require('./config/db');
+const { firebaseReady } = require('./config/db');
+
+if (!firebaseReady) {
+  console.error('⚠️⚠️⚠️ FIREBASE NOT READY - DATABASE QUERIES WILL FAIL ⚠️⚠️⚠️');
+}
 
 const authRoutes = require('./routes/authRoutes');
 const userRoutes = require('./routes/userRoutes');
@@ -64,16 +69,17 @@ app.use('/api', articleRoutes);
 // ✅ HEALTH CHECK
 app.get('/health', (req, res) => {
   const response = {
-    status: 'OK',
-    message: 'Backend is running',
+    status: firebaseReady ? 'OK' : 'DEGRADED',
+    message: firebaseReady ? 'Backend running and ready' : 'Backend running but Firebase not initialized',
     timestamp: new Date().toISOString(),
+    database: firebaseReady ? 'CONNECTED' : 'FAILED',
     env: {
       PORT: process.env.PORT,
       NODE_ENV: process.env.NODE_ENV,
       FIREBASE_PROJECT_ID: process.env.FIREBASE_PROJECT_ID ? 'SET' : 'NOT SET'
     }
   };
-  res.json(response);
+  res.status(firebaseReady ? 200 : 503).json(response);
 });
 
 // ✅ 404 HANDLER
@@ -101,7 +107,6 @@ app.use((err, req, res, next) => {
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 Backend running on http://localhost:${PORT}`);
-  console.log(`✅ Firebase initialized`);
   console.log(`✅ CORS enabled`);
   console.log(`📝 NODE_ENV: ${process.env.NODE_ENV || 'development'}`);
   console.log(`📝 Firebase Project ID: ${process.env.FIREBASE_PROJECT_ID || 'NOT SET'}`);

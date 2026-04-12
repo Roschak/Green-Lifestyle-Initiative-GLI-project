@@ -1,6 +1,9 @@
 // backend/config/db.js
 const admin = require('firebase-admin');
 
+let db = null;
+let firebaseReady = false;
+
 if (!admin.apps.length) {
     try {
         // Try to load from file first (localhost development)
@@ -11,7 +14,8 @@ if (!admin.apps.length) {
             console.log('✅ Using serviceAccountKey.json');
         } catch (fileError) {
             // Fall back to environment variables (Vercel/production)
-            console.log('📦 serviceAccountKey.json not found, using environment variables');
+            console.log('📦 serviceAccountKey.json not found, trying environment variables');
+            console.log(`📝 Checking FIREBASE_PROJECT_ID: ${process.env.FIREBASE_PROJECT_ID ? 'SET' : 'NOT SET'}`);
 
             const serviceAccount = {
                 type: "service_account",
@@ -31,7 +35,7 @@ if (!admin.apps.length) {
             }
 
             credential = admin.credential.cert(serviceAccount);
-            console.log('✅ Using Firebase credentials from environment variables');
+            console.log('✅ Firebase credential created from environment variables');
         }
 
         admin.initializeApp({
@@ -42,14 +46,26 @@ if (!admin.apps.length) {
         const project = process.env.FIREBASE_PROJECT_ID || 'unknown';
         console.log('✅ Firebase Admin SDK initialized');
         console.log(`📁 Project: ${project}`);
+        
+        db = admin.firestore();
+        firebaseReady = true;
     } catch (error) {
-        console.error('❌ Firebase Error:', error.message);
-        console.error('⚠️ Make sure either:');
-        console.error('  1. serviceAccountKey.json exists in backend folder (localhost), OR');
-        console.error('  2. Environment variables are set (Vercel/production)');
-        process.exit(1);
+        console.error('❌ Firebase Initialization Error:', error.message);
+        console.error('⚠️ Firebase is NOT ready. App will run but database queries will fail');
+        console.error('⚠️ To fix, either:');
+        console.error('  1. Add serviceAccountKey.json to backend folder (localhost), OR');
+        console.error('  2. Set environment variables in Vercel:');
+        console.error('     - FIREBASE_PROJECT_ID');
+        console.error('     - FIREBASE_PRIVATE_KEY_ID');
+        console.error('     - FIREBASE_PRIVATE_KEY');
+        console.error('     - FIREBASE_CLIENT_EMAIL');
+        console.error('     - FIREBASE_CLIENT_ID');
+        console.error('     - FIREBASE_CLIENT_X509_CERT_URL');
+        firebaseReady = false;
+        db = null;
+        // Don't exit - let app continue to serve at least health checks
     }
 }
 
-const db = admin.firestore();
 module.exports = db;
+module.exports.firebaseReady = firebaseReady;
