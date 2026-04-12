@@ -294,6 +294,20 @@ npm run dev
 
 ---
 
+## 🧪 Test Credentials
+
+### Admin Account (Testing)
+- **Email:** schak@gmail.com
+- **Password:** adm1234
+
+Use this account to test admin features:
+- Create events
+- Moderate user actions
+- Manage articles
+- View analytics & monitoring
+
+---
+
 ## 📊 Dashboard Features
 
 ### User Dashboard
