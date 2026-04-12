@@ -462,6 +462,89 @@ export default function LandingPage() {
           </div>
         </div>
       )}
+
+      {/* ==================== PROFESSIONAL FOOTER ==================== */}
+      <footer className="relative mt-20 bg-black/20 backdrop-blur-md border-t border-white/20 py-16 px-16">
+        <div className="max-w-7xl mx-auto">
+          {/* Footer Top - 4 Columns */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
+            {/* Column 1: About */}
+            <div className="text-white">
+              <h3 className="font-black text-lg mb-4 text-green-300">GLI Platform</h3>
+              <p className="text-white/70 text-sm leading-relaxed mb-4">
+                Green Lifestyle Initiative adalah platform untuk mengubah kesadaran lingkungan menjadi aksi nyata dengan gamifikasi yang menyenangkan.
+              </p>
+              <div className="flex gap-3">
+                <a href="#" className="w-8 h-8 rounded-full bg-white/10 hover:bg-green-500/30 flex items-center justify-center transition text-white/60 hover:text-green-300 text-xs font-bold">f</a>
+                <a href="#" className="w-8 h-8 rounded-full bg-white/10 hover:bg-green-500/30 flex items-center justify-center transition text-white/60 hover:text-green-300 text-xs font-bold">ig</a>
+                <a href="#" className="w-8 h-8 rounded-full bg-white/10 hover:bg-green-500/30 flex items-center justify-center transition text-white/60 hover:text-green-300 text-xs font-bold">tw</a>
+              </div>
+            </div>
+
+            {/* Column 2: Platform */}
+            <div className="text-white">
+              <h3 className="font-black text-lg mb-4 text-green-300">Platform</h3>
+              <ul className="space-y-2 text-sm">
+                <li><a href="#home" className="text-white/70 hover:text-green-300 transition">🏠 Home</a></li>
+                <li><a href="#event" className="text-white/70 hover:text-green-300 transition">🎪 Event</a></li>
+                <li><a href="#artikel" className="text-white/70 hover:text-green-300 transition">📚 Artikel</a></li>
+                <li><a href="/dashboard" className="text-white/70 hover:text-green-300 transition">📊 Dashboard</a></li>
+              </ul>
+            </div>
+
+            {/* Column 3: Features */}
+            <div className="text-white">
+              <h3 className="font-black text-lg mb-4 text-green-300">Fitur</h3>
+              <ul className="space-y-2 text-sm">
+                <li><a href="/" className="text-white/70 hover:text-green-300 transition">✅ Aksi Hijau</a></li>
+                <li><a href="/" className="text-white/70 hover:text-green-300 transition">🏆 Medal & Leaderboard</a></li>
+                <li><a href="/" className="text-white/70 hover:text-green-300 transition">🎯 Gamifikasi</a></li>
+                <li><a href="/" className="text-white/70 hover:text-green-300 transition">👥 Komunitas</a></li>
+              </ul>
+            </div>
+
+            {/* Column 4: Contact & Legal */}
+            <div className="text-white">
+              <h3 className="font-black text-lg mb-4 text-green-300">Kontak</h3>
+              <ul className="space-y-3 text-sm">
+                <li className="text-white/70">
+                  <p className="text-[10px] font-bold text-white/50 uppercase tracking-wider mb-1">Email</p>
+                  <a href="mailto:support@gli-project.com" className="hover:text-green-300 transition">support@gli-project.com</a>
+                </li>
+                <li className="text-white/70">
+                  <p className="text-[10px] font-bold text-white/50 uppercase tracking-wider mb-1">Lokasi</p>
+                  <span>Indonesia 🇮🇩</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Divider */}
+          <div className="h-px bg-gradient-to-r from-transparent via-white/20 to-transparent mb-8" />
+
+          {/* Footer Bottom */}
+          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+            {/* Left: Copyright */}
+            <div className="text-white/60 text-xs text-center md:text-left">
+              <p className="mb-1">© 2026 Green Lifestyle Initiative. All rights reserved.</p>
+              <p>Platform untuk aksi lingkungan nyata bersama komunitas global 🌍</p>
+            </div>
+
+            {/* Right: Legal Links */}
+            <div className="flex gap-6 text-white/60 text-xs">
+              <a href="/" className="hover:text-green-300 transition">Privacy Policy</a>
+              <a href="/" className="hover:text-green-300 transition">Terms of Service</a>
+              <a href="/" className="hover:text-green-300 transition">Cookie Policy</a>
+            </div>
+          </div>
+
+          {/* Status Badge */}
+          <div className="mt-8 flex items-center justify-center gap-2 text-[10px] text-white/50">
+            <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+            <span>Platform Status: <strong className="text-green-300">Operational</strong> • v1.0.0</span>
+          </div>
+        </div>
+      </footer>
     </div>
   )
 }

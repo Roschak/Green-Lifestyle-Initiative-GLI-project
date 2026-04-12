@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import AdminSidebar from '../../components/AdminSidebar';
-import { api } from '../../services/api';
+import api from '../../services/api';
 
 export default function AdminArticle() {
   const [articles, setArticles] = useState([]);
