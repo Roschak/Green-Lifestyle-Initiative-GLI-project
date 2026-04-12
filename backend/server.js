@@ -2,19 +2,33 @@ const express = require('express');
 const cors = require('cors');
 require('dotenv').config();
 
-// ✅ INITIALIZE DATABASE DULU
-const db = require('./config/db');
-const { firebaseReady } = require('./config/db');
+console.log('[APP] Starting backend initialization...');
 
-if (!firebaseReady) {
-  console.error('⚠️⚠️⚠️ FIREBASE NOT READY - DATABASE QUERIES WILL FAIL ⚠️⚠️⚠️');
+let db = null;
+let firebaseReady = false;
+let authRoutes, userRoutes, adminRoutes, eventRoutes, articleRoutes;
+
+try {
+  // ✅ INITIALIZE DATABASE DULU
+  db = require('./config/db');
+  firebaseReady = require('./config/db').firebaseReady;
+  
+  if (!firebaseReady) {
+    console.error('⚠️ FIREBASE NOT READY - DATABASE QUERIES WILL FAIL');
+  }
+
+  authRoutes = require('./routes/authRoutes');
+  userRoutes = require('./routes/userRoutes');
+  adminRoutes = require('./routes/adminRoutes');
+  eventRoutes = require('./routes/eventRoutes');
+  articleRoutes = require('./routes/articleRoutes');
+  
+  console.log('[APP] All modules loaded successfully');
+} catch (initErr) {
+  console.error('[APP] ERROR during initialization:', initErr.message);
+  console.error('[APP] Stack:', initErr.stack);
+  // Continue anyway - might still be able to serve health checks
 }
-
-const authRoutes = require('./routes/authRoutes');
-const userRoutes = require('./routes/userRoutes');
-const adminRoutes = require('./routes/adminRoutes');
-const eventRoutes = require('./routes/eventRoutes');
-const articleRoutes = require('./routes/articleRoutes');
 
 const app = express();
 
@@ -60,11 +74,11 @@ app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static('uploads'));
 
 // ✅ ROUTES
-app.use('/api/auth', authRoutes);
-app.use('/api/user', userRoutes);
-app.use('/api/admin', adminRoutes);
-app.use('/api/events', eventRoutes);
-app.use('/api', articleRoutes);
+if (authRoutes) app.use('/api/auth', authRoutes);
+if (userRoutes) app.use('/api/user', userRoutes);
+if (adminRoutes) app.use('/api/admin', adminRoutes);
+if (eventRoutes) app.use('/api/events', eventRoutes);
+if (articleRoutes) app.use('/api', articleRoutes);
 
 // ✅ HEALTH CHECK
 app.get('/health', (req, res) => {
@@ -80,6 +94,14 @@ app.get('/health', (req, res) => {
     }
   };
   res.status(firebaseReady ? 200 : 503).json(response);
+});
+
+// ✅ ALIVE CHECK - returns 200 even if Firebase isn't ready
+app.get('/alive', (req, res) => {
+  res.json({
+    alive: true,
+    timestamp: new Date().toISOString()
+  });
 });
 
 // ✅ 404 HANDLER
