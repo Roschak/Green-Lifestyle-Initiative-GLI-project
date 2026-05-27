@@ -3,7 +3,45 @@
 const db = require('../config/db');
 const admin = require('firebase-admin');
 const path = require('path');
+const { uploadToFirebaseStorage } = require('../config/firebaseStorage');
 // TODO: Firebase Storage upload to be implemented later
+
+const normalizeActionImageUrl = (val) => {
+    if (!val) return val;
+
+    if (typeof val === 'string') {
+        if (val.startsWith('http://') || val.startsWith('https://')) {
+            return val;
+        }
+
+        const normalizedPath = val.replace(/\\/g, '/');
+
+        // Legacy Cloudinary path format stored in DB: /uploads/gli_actions/<public_id>
+        if (normalizedPath.startsWith('/uploads/gli_actions/')) {
+            const publicId = normalizedPath.split('/uploads/')[1] || '';
+            const cloudName = process.env.CLOUDINARY_CLOUD_NAME || 'dmgypsno6';
+            return `https://res.cloudinary.com/${cloudName}/image/upload/${publicId.replace(/^\/+/, '')}`;
+        }
+
+        if (normalizedPath.startsWith('/uploads/')) {
+            return `/${path.posix.normalize(normalizedPath).replace(/^\/+/, '')}`;
+        }
+
+        return normalizedPath;
+    }
+
+    if (typeof val === 'object') {
+        if (val.secure_url) return val.secure_url;
+        if (val.url && /^https?:\/\//i.test(val.url)) return val.url;
+        if (val.path && /^https?:\/\//i.test(val.path)) return val.path;
+        if (val.public_id) {
+            const cloudName = process.env.CLOUDINARY_CLOUD_NAME || 'dmgypsno6';
+            return `https://res.cloudinary.com/${cloudName}/image/upload/${val.public_id}`;
+        }
+    }
+
+    return val;
+};
 
 /**
  * Create Action - Endpoint untuk user submit aksi hijau baru
@@ -33,17 +71,28 @@ exports.createAction = async (req, res) => {
 
         // Get image URL from upload result (Cloudinary URL or local /uploads path)
         if (req.file) {
-            if (req.file.path && /^https?:\/\//i.test(req.file.path)) {
+            if (req.file.buffer) {
+                try {
+                    const fileName = req.file.originalname || `action-${Date.now()}.jpg`;
+                    imageUrl = await uploadToFirebaseStorage(req.file.buffer, fileName, 'actions');
+                } catch (uploadErr) {
+                    console.error('❌ [createAction] Firebase upload failed:', uploadErr.message);
+                }
+            }
+
+            if (!imageUrl && req.file.path && /^https?:\/\//i.test(req.file.path)) {
                 imageUrl = req.file.path;
-            } else if (req.file.filename) {
+            } else if (!imageUrl && req.file.filename) {
                 imageUrl = `/uploads/${req.file.filename}`;
-            } else if (req.file.path) {
+            } else if (!imageUrl && req.file.path) {
                 imageUrl = `/${String(req.file.path).replace(/\\/g, '/').replace(/^\/+/, '')}`;
             }
 
             if (imageUrl && !/^https?:\/\//i.test(imageUrl)) {
                 imageUrl = `/${path.posix.normalize(imageUrl).replace(/^\/+/, '')}`;
             }
+
+            imageUrl = normalizeActionImageUrl(imageUrl);
 
             console.log('✅ Image uploaded:', imageUrl || '(no usable path)');
         } else {
@@ -115,6 +164,15 @@ exports.getUserActions = async (req, res) => {
             // Firestore Timestamp object harus convert ke ISO string
             if (data.created_at?.toDate) data.created_at = data.created_at.toDate().toISOString();
             if (data.updated_at?.toDate) data.updated_at = data.updated_at.toDate().toISOString();
+
+            // Normalize any action image fields to ensure frontend can display images reliably
+            const rawImage = data.img || data.imageUrl || data.image || data.photo || data.photo_url || data.proof_img;
+            const normalizedImage = normalizeActionImageUrl(rawImage);
+            if (normalizedImage) {
+                data.img = normalizedImage;
+                data.imageUrl = normalizedImage;
+            }
+
             actions.push({ id: doc.id, ...data });
         });
 

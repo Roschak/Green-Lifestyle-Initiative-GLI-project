@@ -7,7 +7,7 @@ import { useAuth } from '../../context/AuthContext'
 import api from '../../services/api'
 import { Send, Image as ImageIcon, CheckCircle, Loader2, MapPin, X } from 'lucide-react'
 
-const BG = 'linear-gradient(180deg, #004D40 0%, #2E7D32 100%)'
+const BG = '#f3f4f6'
 const AKSI_DRAFT_KEY = 'gli_user_aksi_draft'
 
 export default function UserAksi() {

@@ -46,7 +46,7 @@ export default function AdminSidebar() {
   return (
     <>
       <aside className="w-64 min-h-screen flex flex-col flex-shrink-0 sticky top-0 h-screen"
-        style={{ background: 'linear-gradient(180deg, #1B4332 0%, #2D6A4F 100%)' }}>
+        style={{ background: 'linear-gradient(180deg, #0F4C2E 0%, #2D8F5D 100%)' }}>
 
         <div className="p-5 pb-3">
           <div onClick={() => setShowPopup(true)}
@@ -61,7 +61,7 @@ export default function AdminSidebar() {
                 <div className="text-green-500 text-[10px] font-bold uppercase tracking-wider">online</div>
               </div>
             </div>
-            <div className="text-green-400 text-[10px] font-black">{showPopup ? '▴' : '▾'}</div>
+            <div className="text-green-600 text-[10px] font-black">{showPopup ? '▴' : '▾'}</div>
           </div>
         </div>
 
@@ -71,8 +71,8 @@ export default function AdminSidebar() {
             const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '/')
             return (
               <div key={item.path} onClick={() => navigate(item.path)}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl mb-1 cursor-pointer text-white font-medium text-sm transition-all
-                  ${isActive ? 'bg-white/20 font-bold shadow-inner' : 'hover:bg-white/10 opacity-70 hover:opacity-100'}`}>
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl mb-2 cursor-pointer text-white font-medium text-sm transition-all
+                  ${isActive ? 'bg-white/18 font-bold shadow-inner ring-1 ring-white/15' : 'hover:bg-white/12 opacity-80 hover:opacity-100'}`}>
                 <Icon size={18} /> {item.label}
               </div>
             )
@@ -84,7 +84,7 @@ export default function AdminSidebar() {
       {showPopup && (
         <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setShowPopup(false)}>
           <div className="bg-white rounded-[40px] w-full max-w-sm shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
-            <div className="bg-gradient-to-r from-green-800 to-green-600 p-6 relative">
+            <div className="bg-gradient-to-r from-green-800 to-emerald-600 p-6 relative">
               <button onClick={() => setShowPopup(false)} className="absolute top-4 right-4 text-white/60 hover:text-white p-1 hover:bg-white/10 rounded-full">
                 <X size={18} />
               </button>
@@ -132,9 +132,9 @@ export default function AdminSidebar() {
                     <div className="flex items-center gap-1 mb-1"><Clock size={11} className="text-yellow-500" /><p className="text-[9px] font-black text-gray-400 uppercase">Pending</p></div>
                     <p className="text-xl font-black text-yellow-600">{adminStats.pending}</p>
                   </div>
-                  <div className="bg-blue-50 rounded-2xl p-3">
-                    <div className="flex items-center gap-1 mb-1"><User size={11} className="text-blue-400" /><p className="text-[9px] font-black text-gray-400 uppercase">Total User</p></div>
-                    <p className="text-xl font-black text-blue-500">{adminStats.totalUsers}</p>
+                  <div className="bg-emerald-50 rounded-2xl p-3">
+                    <div className="flex items-center gap-1 mb-1"><User size={11} className="text-emerald-500" /><p className="text-[9px] font-black text-gray-400 uppercase">Total User</p></div>
+                    <p className="text-xl font-black text-emerald-600">{adminStats.totalUsers}</p>
                   </div>
                 </div>
               ) : (

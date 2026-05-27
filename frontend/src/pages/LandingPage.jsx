@@ -9,11 +9,18 @@ const BG_IMAGE = '/images/ricefields.jpeg'
 const fmt = (d) => !d ? '-' : new Date(d).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })
 const fmtDT = (d) => !d ? '-' : new Date(d).toLocaleString('id-ID', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' })
 
-// Helper to get correct image URL (robust against string 'undefined'/'null')
+// Helper to get correct image URL (robust against string 'undefined'/'null' and base64 data URIs)
 const getImageUrl = (img) => {
   if (!img) return null
   const raw = String(img).trim()
-  if (!raw || raw === 'no-image.jpg' || raw === 'undefined' || raw === 'null') return null
+  if (!raw || raw === 'no-image.jpg' || raw === 'undefined' || raw === 'null' || raw === '[object Object]') return null
+  
+  // ✅ AUDIT FIX: Prevent base64 data URIs from being processed as URLs
+  if (raw.startsWith('data:image')) {
+    console.warn('⚠️ Base64 image data detected in thumbnail field - ignoring to prevent 414 errors')
+    return null  // Reject base64 data URIs - they shouldn't be stored
+  }
+  
   if (raw.startsWith('http')) return raw
 
   const normalized = raw.replace(/\\/g, '/')
@@ -25,8 +32,11 @@ const getImageUrl = (img) => {
   const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'dmgypsno6'
   if (normalized.includes('/uploads/gli_actions/')) {
     const parts = normalized.split('/uploads/gli_actions/')
-    const publicId = parts[1] ? parts[1].replace(/^\/+/, '') : ''
-    if (!publicId || publicId === 'undefined' || publicId === 'null') return null
+    let publicId = parts[1] ? parts[1].replace(/^\/+/, '') : ''
+    // Validate publicId is not empty or a placeholder value
+    if (!publicId || publicId === 'undefined' || publicId === 'null' || publicId === '[object Object]') {
+      return null
+    }
     return `https://res.cloudinary.com/${cloudName}/image/upload/${publicId}`
   }
 
@@ -76,6 +86,8 @@ export default function LandingPage() {
   const [form, setForm] = useState({ name: '', email: '', phone: '' })
   const [loading, setLoading] = useState(false)
   const [confirmClose, setConfirmClose] = useState(false)
+  const [registerConfirm, setRegisterConfirm] = useState(null)
+  const [feedbackModal, setFeedbackModal] = useState(null)
   const [currentTime, setCurrentTime] = useState(new Date())
 
   useEffect(() => {
@@ -118,12 +130,18 @@ export default function LandingPage() {
     setRegisterModal(event)
   }
 
-  const handleRegister = async () => {
-    if (!form.name || !form.email) return alert('Nama dan email wajib diisi!')
+  const handleRegister = async (targetEvent = registerModal) => {
+    if (!form.name || !form.email) {
+      setFeedbackModal({
+        title: 'Data belum lengkap',
+        message: 'Nama dan email wajib diisi sebelum mendaftar.'
+      })
+      return
+    }
     setLoading(true)
     try {
       const res = await api.post('/events/register', {
-        event_id: registerModal.id,
+        event_id: targetEvent.id,
         user_id: user?.id || null,  // ✅ Kirim user_id kalau sudah login
         name: form.name,
         email: form.email,
@@ -135,7 +153,10 @@ export default function LandingPage() {
       // ✅ Simpan data sukses termasuk wa_link
       setSuccessData(res.data)
     } catch (err) {
-      alert(err.response?.data?.message || 'Gagal mendaftar')
+      setFeedbackModal({
+        title: 'Pendaftaran gagal',
+        message: err.response?.data?.message || 'Gagal mendaftar'
+      })
     } finally {
       setLoading(false)
     }
@@ -381,7 +402,7 @@ export default function LandingPage() {
 
               <div className="flex gap-2">
                 {detailModal.status === 'roundown' && (
-                  <button onClick={() => { setDetailModal(null); handleOpenRegister(detailModal) }}
+                  <button onClick={() => { setDetailModal(null); setRegisterConfirm(detailModal) }}
                     className="flex-1 py-3 bg-green-500 text-white font-black text-sm rounded-2xl hover:bg-green-600 transition">
                     Daftar Sekarang
                   </button>
@@ -449,12 +470,50 @@ export default function LandingPage() {
             </div>
 
             <div className="flex gap-3 mt-6">
-              <button onClick={handleRegister} disabled={loading}
+              <button onClick={() => {
+                if (!form.name || !form.email) {
+                  setFeedbackModal({ title: 'Data belum lengkap', message: 'Nama dan email wajib diisi sebelum mendaftar.' })
+                  return
+                }
+                setRegisterConfirm(registerModal)
+              }} disabled={loading}
                 className="flex-1 py-4 bg-green-500 text-white font-black rounded-2xl hover:bg-green-600 transition disabled:opacity-50">
                 {loading ? 'Mendaftar...' : 'Daftar Sekarang'}
               </button>
               <button onClick={handleCloseRegister} className="flex-1 py-4 bg-gray-100 text-gray-500 font-black rounded-2xl hover:bg-gray-200 transition">
                 Batal
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ==================== MODAL KONFIRMASI DAFTAR ==================== */}
+      {registerConfirm && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={() => setRegisterConfirm(null)}>
+          <div className="bg-white rounded-[32px] w-full max-w-sm shadow-2xl p-8" onClick={e => e.stopPropagation()}>
+            <p className="text-[10px] font-black text-green-600 uppercase tracking-[0.3em] mb-2">Konfirmasi</p>
+            <h3 className="font-black text-2xl text-gray-800 mb-3 leading-tight">Daftar ke event ini?</h3>
+            <p className="text-gray-500 text-sm leading-relaxed mb-6">
+              Kamu akan terdaftar sebagai Member GLI untuk event <strong>{registerConfirm.title}</strong>.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setRegisterConfirm(null)}
+                className="flex-1 py-3 bg-gray-100 text-gray-600 font-black rounded-2xl hover:bg-gray-200 transition"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  const target = registerConfirm
+                    setRegisterConfirm(null)
+                    setRegisterModal(target)
+                    await handleRegister(target)
+                }}
+                className="flex-1 py-3 bg-green-500 text-white font-black rounded-2xl hover:bg-green-600 transition"
+              >
+                OK
               </button>
             </div>
           </div>
@@ -511,7 +570,8 @@ export default function LandingPage() {
             )}
 
             {/* ✅ Upload bukti hanya untuk member/login, guest tidak perlu foto */}
-            {successData.event_id && successData.is_gli_member && (
+            {/* ⏱️ Hanya tampil ketika event sudah dilaksanakan (bukan saat registrasi) */}
+            {successData.event_id && successData.is_gli_member && successData.event_status === 'dilaksanakan' && (
               <button
                 onClick={() => {
                   navigate(`/event/${successData.event_id}/proof/${successData.registration_id}`);
@@ -537,6 +597,20 @@ export default function LandingPage() {
             <button onClick={() => setSuccessData(null)}
               className="w-full py-4 bg-gray-100 text-gray-600 font-black rounded-2xl hover:bg-gray-200 transition">
               Tutup
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ==================== MODAL PESAN ==================== */}
+      {feedbackModal && (
+        <div className="fixed inset-0 z-[310] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={() => setFeedbackModal(null)}>
+          <div className="bg-white rounded-[32px] w-full max-w-sm shadow-2xl p-8 text-center" onClick={e => e.stopPropagation()}>
+            <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600 font-black text-xl">!</div>
+            <h3 className="font-black text-xl text-gray-800 mb-2">{feedbackModal.title}</h3>
+            <p className="text-gray-500 text-sm mb-6">{feedbackModal.message}</p>
+            <button onClick={() => setFeedbackModal(null)} className="w-full py-3 bg-gray-100 text-gray-600 font-black rounded-2xl hover:bg-gray-200 transition">
+              OK
             </button>
           </div>
         </div>

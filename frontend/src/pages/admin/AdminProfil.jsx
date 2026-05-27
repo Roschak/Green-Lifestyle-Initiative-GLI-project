@@ -3,7 +3,7 @@ import AdminSidebar from '../../components/AdminSidebar'
 import { Shield, CheckCircle, XCircle, Clock, Users, Mail, BadgeCheck, Activity } from 'lucide-react'
 import api from '../../services/api'
 
-const BG = 'linear-gradient(180deg, #004D40 0%, #2E7D32 100%)'
+const BG = '#f3f4f6'
 
 export default function AdminProfil() {
   const [stats, setStats]   = useState(null)
@@ -28,8 +28,8 @@ export default function AdminProfil() {
     <div className="flex min-h-screen" style={{ background: BG }}>
       <AdminSidebar />
       <main className="flex-1 overflow-y-auto p-8">
-        <h1 className="font-black text-4xl text-white italic uppercase tracking-tighter mb-2">Profil Admin</h1>
-        <p className="text-green-400 text-[10px] font-black uppercase tracking-[0.4em] mb-10">
+        <h1 className="font-black text-4xl text-gray-900 italic uppercase tracking-tighter mb-2">Profil Admin</h1>
+        <p className="text-green-600 text-[10px] font-black uppercase tracking-[0.4em] mb-10">
           Informasi & Statistik Administrator
         </p>
 
@@ -78,7 +78,7 @@ export default function AdminProfil() {
           {/* Statistik Utama */}
           <div className="lg:col-span-2 grid grid-cols-2 gap-4">
             {loading ? (
-              <div className="col-span-2 flex items-center justify-center text-white/40 font-black uppercase tracking-widest animate-pulse">
+              <div className="col-span-2 flex items-center justify-center text-gray-400 font-black uppercase tracking-widest animate-pulse">
                 Memuat statistik...
               </div>
             ) : stats ? (
@@ -138,17 +138,17 @@ export default function AdminProfil() {
                 {/* Total User */}
                 <div className="bg-white rounded-[32px] p-6 shadow-xl">
                   <div className="flex items-center gap-2 mb-3">
-                    <Users size={16} className="text-blue-400" />
+                    <Users size={16} className="text-emerald-500" />
                     <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Total User</p>
                   </div>
-                  <h3 className="text-4xl font-black text-blue-500">{stats.totalUsers}</h3>
+                  <h3 className="text-4xl font-black text-emerald-600">{stats.totalUsers}</h3>
                   <p className="text-[10px] text-gray-400 font-bold mt-2 uppercase">
                     {stats.onlineUsers} sedang online
                   </p>
                 </div>
               </>
             ) : (
-              <div className="col-span-2 text-center text-white/40 font-black uppercase">Gagal memuat data</div>
+              <div className="col-span-2 text-center text-gray-400 font-black uppercase">Gagal memuat data</div>
             )}
           </div>
         </div>

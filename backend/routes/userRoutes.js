@@ -20,7 +20,7 @@ router.post('/actions', protect, (req, res, next) => {
 
 router.get('/stats/:id', protect, userController.getUserStats);
 router.get('/actions/:id', protect, userController.getUserActions);
-router.get('/profile/:id', userController.getUserProfile);
+router.get('/profile/:id', protect, userController.getUserProfile);
 router.put('/profile/:id', protect, userController.updateUserProfile);  // ✅ NEW: Update profile
 router.post('/profile/:id/avatar', protect, upload.single('avatar'), userController.uploadAvatar);  // ✅ NEW: Upload avatar
 // ✅ Public leaderboard - users can view rankings without admin role

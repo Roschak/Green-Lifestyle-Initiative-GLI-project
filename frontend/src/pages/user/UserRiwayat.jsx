@@ -5,7 +5,7 @@ import { Share2, RefreshCcw, X, MapPin, Calendar, Star, CheckCircle, XCircle } f
 import { useAuth } from '../../context/AuthContext'
 import api from '../../services/api'
 
-const BG = 'linear-gradient(180deg, #004D40 0%, #2E7D32 100%)'
+const BG = '#f3f4f6'
 
 const statusMap = {
   approved: { label: 'DISETUJUI', color: '#166534', bg: '#dcfce7' },
@@ -30,6 +30,14 @@ const resolveActionImage = (action) => {
   const source = action?.img || action?.imageUrl || action?.proof_img || action?.photo_url || action?.photo
   if (!source || source === 'no-image.jpg') return null
   if (String(source).startsWith('http')) return String(source)
+
+  // Legacy Cloudinary path format from backend storage
+  if (String(source).startsWith('/uploads/gli_actions/')) {
+    const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'dmgypsno6'
+    const publicId = String(source).split('/uploads/')[1]
+    return `https://res.cloudinary.com/${cloudName}/image/upload/${publicId}`
+  }
+
   const normalized = String(source).replace(/\\/g, '/').replace(/^\/+/, '')
   const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
   const baseUrl = apiUrl.replace('/api', '')
@@ -92,14 +100,14 @@ export default function UserRiwayat() {
       <UserSidebar />
       <main className="flex-1 overflow-y-auto p-8">
         <div className="flex justify-between items-center mb-6">
-          <h1 className="font-black text-3xl text-white">Riwayat Aksi Saya</h1>
-          <button onClick={fetchActions} className="text-white/50 hover:text-white transition-all">
+          <h1 className="font-black text-3xl text-gray-900">Riwayat Aksi Saya</h1>
+          <button onClick={fetchActions} className="text-gray-400 hover:text-gray-700 transition-all">
             <RefreshCcw size={20} className={loading ? 'animate-spin' : ''} />
           </button>
         </div>
 
         {loading ? (
-          <div className="text-center text-white/40 py-20 font-bold tracking-widest animate-pulse uppercase">
+          <div className="text-center text-gray-400 py-20 font-bold tracking-widest animate-pulse uppercase">
             Menghubungkan ke database...
           </div>
         ) : (
@@ -107,7 +115,7 @@ export default function UserRiwayat() {
             {actions.length > 0 ? actions.map(item => {
               const st = statusMap[item.status] || statusMap.pending
               return (
-                <div key={item.id} className="rounded-2xl overflow-hidden shadow-lg border border-white/10 bg-white">
+                <div key={item.id} className="rounded-2xl overflow-hidden shadow-lg border border-gray-100 bg-white">
                   <div className="p-5">
                     <span
                       className="text-[10px] font-black px-3 py-1 rounded-full inline-block mb-3 tracking-wider"
@@ -203,7 +211,7 @@ export default function UserRiwayat() {
                 </div>
               )
             }) : (
-              <div className="col-span-2 text-center py-20 bg-white/5 rounded-3xl border border-dashed border-white/20 text-white/20">
+              <div className="col-span-2 text-center py-20 bg-white rounded-3xl border border-dashed border-gray-200 text-gray-400">
                 <p className="font-black uppercase tracking-[0.3em]">Belum Ada Jejak Hijau</p>
               </div>
             )}

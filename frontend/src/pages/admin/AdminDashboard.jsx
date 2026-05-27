@@ -5,7 +5,7 @@ import { Bell, Users, X, Clock, Calendar, Trophy, ArrowUpRight, Activity } from 
 import { AreaChart, Area, ResponsiveContainer, Tooltip, XAxis } from 'recharts'
 import api from '../../services/api'
 
-const BG = 'linear-gradient(180deg, #004D40 0%, #2E7D32 100%)'
+const BG = '#f3f4f6'
 
 export default function AdminDashboard() {
   const navigate = useNavigate()
@@ -81,19 +81,19 @@ export default function AdminDashboard() {
   return (
     <div className="flex min-h-screen" style={{ background: BG }}>
       <AdminSidebar />
-      <main className="flex-1 overflow-y-auto p-8">
+      <main className="flex-1 overflow-y-auto p-6 lg:p-8">
 
         {/* HEADER DASHBOARD */}
         <div className="flex justify-between items-center mb-10">
           <div>
-            <h1 className="text-4xl font-black text-white italic uppercase tracking-tighter">Command Center</h1>
-            <p className="text-green-400 text-[10px] font-black uppercase tracking-[0.4em] mt-1">
+            <h1 className="text-4xl font-black text-gray-900 italic uppercase tracking-tighter">Command Center</h1>
+            <p className="text-green-600 text-[10px] font-black uppercase tracking-[0.4em] mt-1">
               Active Season: {stats.currentSeason || 'Loading...'}
             </p>
           </div>
-          <div className="flex items-center gap-4 bg-white/5 border border-white/10 px-6 py-3 rounded-2xl backdrop-blur-md">
-            <Calendar size={18} className="text-green-400" />
-            <span className="text-white text-sm font-black uppercase tracking-widest">
+          <div className="flex items-center gap-4 bg-white border border-gray-200 px-6 py-3 rounded-2xl shadow-sm">
+            <Calendar size={18} className="text-green-600" />
+            <span className="text-gray-700 text-sm font-black uppercase tracking-widest">
               {new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}
             </span>
           </div>
@@ -103,7 +103,7 @@ export default function AdminDashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 mb-8">
 
           {/* CHART AKTIVITAS (2/3 Lebar) */}
-          <div className="lg:col-span-2 bg-white rounded-[40px] p-8 shadow-2xl relative overflow-hidden">
+          <div className="lg:col-span-2 bg-white rounded-[40px] p-8 shadow-2xl relative overflow-hidden border border-gray-100">
             <div className="flex justify-between items-center mb-8">
               <div>
                 <h3 className="font-black text-gray-800 uppercase italic text-xl">Platform Traffic</h3>
@@ -157,30 +157,30 @@ export default function AdminDashboard() {
           </div>
 
           {/* SEASON MONITORING (1/3 Lebar) */}
-          <div className="bg-[#1B4332] border border-white/10 rounded-[40px] p-8 shadow-2xl flex flex-col justify-between group hover:border-green-400 transition-all">
+          <div className="bg-white border border-gray-100 rounded-[40px] p-8 shadow-2xl flex flex-col justify-between group hover:border-green-400 transition-all">
             <div className="flex justify-between items-start">
               <div className="p-4 bg-yellow-400 rounded-2xl text-green-900 shadow-lg shadow-yellow-400/20">
                 <Trophy size={28} />
               </div>
               <div className="text-right">
-                <p className="text-white/30 text-[10px] font-black uppercase tracking-widest">Top Performer</p>
-                <Activity size={18} className="text-green-400 ml-auto mt-2 animate-pulse" />
+                <p className="text-gray-400 text-[10px] font-black uppercase tracking-widest">Top Performer</p>
+                <Activity size={18} className="text-green-500 ml-auto mt-2 animate-pulse" />
               </div>
             </div>
             <div className="mt-6">
-              <p className="text-white/40 text-[10px] font-black uppercase mb-1">Juara Sementara:</p>
-              <h2 className="text-3xl font-black text-white italic uppercase truncate tracking-tighter mb-1">
+              <p className="text-gray-400 text-[10px] font-black uppercase mb-1">Juara Sementara:</p>
+              <h2 className="text-3xl font-black text-gray-900 italic uppercase truncate tracking-tighter mb-1">
                 {stats.topLeaderboard}
               </h2>
               <div className="flex items-center gap-2">
-                <span className="px-3 py-1 bg-green-500/20 rounded-lg text-green-400 font-black text-xs">
+                <span className="px-3 py-1 bg-green-50 rounded-lg text-green-700 font-black text-xs">
                   {stats.topPoints} GREEN POINTS
                 </span>
               </div>
             </div>
             <button
               onClick={() => navigate('/admin/monitoring')}
-              className="w-full mt-8 py-4 bg-white/5 hover:bg-green-400 hover:text-green-900 border border-white/10 text-white font-black text-[10px] rounded-2xl uppercase tracking-widest transition-all flex items-center justify-center gap-2"
+              className="w-full mt-8 py-4 bg-green-600 hover:bg-green-700 text-white border border-green-600 font-black text-[10px] rounded-2xl uppercase tracking-widest transition-all flex items-center justify-center gap-2"
             >
               Buka Monitoring <ArrowUpRight size={14} />
             </button>
@@ -193,15 +193,15 @@ export default function AdminDashboard() {
           {/* STATS COLUMN */}
           <div className="space-y-6">
             {[
-              { label: 'Total User', val: stats.totalUsers, icon: <Users />, color: 'text-blue-400' },
+              { label: 'Total User', val: stats.totalUsers, icon: <Users />, color: 'text-emerald-500' },
               { label: 'Pending', val: stats.pending, icon: <Clock />, color: 'text-yellow-400' },
               { label: 'Rejected', val: stats.rejected, icon: <X />, color: 'text-red-400' },
             ].map((item, i) => (
-              <div key={i} className="bg-white/5 border border-white/10 p-6 rounded-3xl backdrop-blur-md">
+              <div key={i} className="bg-white border border-gray-100 p-6 rounded-3xl shadow-sm">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-white/40 text-[10px] font-black uppercase">{item.label}</p>
-                    <h3 className="text-2xl font-black text-white mt-1">{item.val}</h3>
+                    <p className="text-gray-400 text-[10px] font-black uppercase">{item.label}</p>
+                    <h3 className="text-2xl font-black text-gray-900 mt-1">{item.val}</h3>
                   </div>
                   <div className={`${item.color} opacity-50`}>{item.icon}</div>
                 </div>
@@ -210,7 +210,7 @@ export default function AdminDashboard() {
           </div>
 
           {/* TABLE COLUMN (3/4 Lebar) */}
-          <div className="lg:col-span-3 bg-white rounded-[40px] p-8 shadow-2xl">
+          <div className="lg:col-span-3 bg-white rounded-[40px] p-8 shadow-2xl border border-gray-100">
             <div className="flex justify-between items-center mb-6">
               <div>
                 <h3 className="font-black text-gray-800 uppercase italic">Recent Action Requests</h3>
@@ -272,29 +272,29 @@ export default function AdminDashboard() {
       {modal && (
         <div
           onClick={() => setModal(null)}
-          className="fixed inset-0 bg-black/80 backdrop-blur-xl z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
         >
           <div
             onClick={e => e.stopPropagation()}
-            className="bg-[#1B4332] border border-white/10 rounded-[40px] p-10 max-w-md w-full shadow-2xl"
+            className="bg-white border border-gray-100 rounded-[40px] p-10 max-w-md w-full shadow-2xl"
           >
-            <h2 className="text-white font-black text-3xl italic uppercase tracking-tighter mb-2">{modal.name}</h2>
-            <div className="inline-block px-3 py-1 bg-green-500/20 text-green-400 text-[10px] font-black uppercase rounded-lg mb-6 tracking-widest">
+            <h2 className="text-gray-900 font-black text-3xl italic uppercase tracking-tighter mb-2">{modal.name}</h2>
+            <div className="inline-block px-3 py-1 bg-green-50 text-green-700 text-[10px] font-black uppercase rounded-lg mb-6 tracking-widest">
               Category: {modal.cat}
             </div>
-            <div className="bg-white/5 border border-white/5 rounded-3xl p-6 italic text-white/70 text-sm leading-relaxed mb-8">
+            <div className="bg-gray-50 border border-gray-100 rounded-3xl p-6 italic text-gray-600 text-sm leading-relaxed mb-8">
               "{modal.desc}"
             </div>
             <div className="grid grid-cols-2 gap-4">
               <button
                 onClick={() => { setModal(null); navigate('/admin/moderasi') }}
-                className="py-4 bg-green-400 text-green-950 font-black rounded-2xl text-[10px] uppercase hover:scale-95 transition-all"
+                className="py-4 bg-green-600 text-white font-black rounded-2xl text-[10px] uppercase hover:scale-95 transition-all"
               >
                 Verifikasi
               </button>
               <button
                 onClick={() => setModal(null)}
-                className="py-4 bg-white/5 text-white/50 font-black rounded-2xl text-[10px] uppercase hover:bg-white/10 transition-all"
+                className="py-4 bg-gray-100 text-gray-600 font-black rounded-2xl text-[10px] uppercase hover:bg-gray-200 transition-all"
               >
                 Tutup
               </button>

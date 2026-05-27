@@ -5,7 +5,7 @@ import { useAuth } from '../../context/AuthContext'
 import { Lock, LogOut, ChevronRight, Edit2, Upload } from 'lucide-react'
 import api from '../../services/api'
 
-const BG = 'linear-gradient(180deg, #004D40 0%, #2E7D32 100%)'
+const BG = '#f3f4f6'
 
 const TrophyIcon = () => (
   <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
@@ -121,7 +121,7 @@ export default function UserProfil() {
       <div className="flex min-h-screen" style={{ background: BG }}>
         <UserSidebar />
         <main className="flex-1 p-8 flex items-center justify-center">
-          <div className="text-white">Loading profile...</div>
+          <div className="text-gray-500">Loading profile...</div>
         </main>
       </div>
     )
@@ -155,15 +155,15 @@ export default function UserProfil() {
     <div className="flex min-h-screen" style={{ background: BG }}>
       <UserSidebar />
       <main className="flex-1 overflow-y-auto p-8">
-        <h1 className="font-black text-3xl text-white mb-6">Profil Saya</h1>
+        <h1 className="font-black text-3xl text-gray-900 mb-6">Profil Saya</h1>
 
         {/* Avatar */}
         <div className="text-center mb-7">
-          <div className="w-24 h-24 rounded-full bg-white/20 border-4 border-green-400 mx-auto mb-4 relative overflow-hidden group">
+          <div className="w-24 h-24 rounded-full bg-white border-4 border-green-400 mx-auto mb-4 relative overflow-hidden group shadow-sm">
             {profile?.avatar ? (
               <img src={profile.avatar} alt="Avatar" className="w-full h-full object-cover" />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-2xl font-bold text-white">
+              <div className="w-full h-full flex items-center justify-center text-2xl font-bold text-gray-700">
                 {getInit(profile?.name || user?.name || 'BS')}
               </div>
             )}
@@ -190,14 +190,14 @@ export default function UserProfil() {
               </div>
             ) : (
               <>
-                <h2 className="font-black text-2xl text-white">{newName || 'User'}</h2>
-                <button onClick={() => setEditingName(true)} className="p-1 hover:bg-white/10 rounded transition-colors">
-                  <Edit2 size={16} className="text-white/60" />
+                <h2 className="font-black text-2xl text-gray-900">{newName || 'User'}</h2>
+                <button onClick={() => setEditingName(true)} className="p-1 hover:bg-gray-100 rounded transition-colors">
+                  <Edit2 size={16} className="text-gray-500" />
                 </button>
               </>
             )}
           </div>
-          <p className="text-sm text-white/45">{user?.email || 'user@email.com'}</p>
+          <p className="text-sm text-gray-500">{user?.email || 'user@email.com'}</p>
         </div>
 
         {/* Stats */}
@@ -216,8 +216,8 @@ export default function UserProfil() {
 
         {/* Medals */}
         <div className="flex items-center gap-4 mb-5">
-          <h3 className="font-black text-2xl text-white">Koleksi Medali</h3>
-          <span className="text-sm text-white/45 cursor-pointer">Lihat Semua</span>
+          <h3 className="font-black text-2xl text-gray-900">Koleksi Medali</h3>
+          <span className="text-sm text-gray-500 cursor-pointer">Lihat Semua</span>
         </div>
         <div className="grid grid-cols-3 gap-5 mb-8">
           {displayMedals.map((m, i) => (
@@ -225,13 +225,13 @@ export default function UserProfil() {
               <div className="w-16 h-16 rounded-full mx-auto mb-2 flex items-center justify-center" style={{ background: m.bg, opacity: m.locked ? 0.3 : 1 }}>
                 <MedalIcon medal={m} />
               </div>
-              <div className={`text-xs font-bold uppercase tracking-wide leading-tight ${m.locked ? 'text-white/20' : 'text-white/65'}`}>{m.label}</div>
+              <div className={`text-xs font-bold uppercase tracking-wide leading-tight ${m.locked ? 'text-gray-300' : 'text-gray-700'}`}>{m.label}</div>
             </div>
           ))}
         </div>
 
         {/* Logout Only */}
-        <h3 className="font-black text-lg text-white mb-4">Pengaturan Akun</h3>
+        <h3 className="font-black text-lg text-gray-900 mb-4">Pengaturan Akun</h3>
         <div className="flex flex-col gap-2.5">
           <div onClick={handleLogout} className="rounded-2xl px-5 py-4 flex items-center gap-3 cursor-pointer border border-red-100 hover:bg-red-50 transition-colors" style={{ background: '#fff5f5' }}>
             <div className="w-9 h-9 rounded-xl bg-red-100 flex items-center justify-center text-red-500"><LogOut size={18} /></div>

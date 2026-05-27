@@ -11,7 +11,7 @@ import { Bell, Search, Activity, Clock, Users, Loader2, RefreshCw, X, Trophy, Me
 import { getAllUsers, getUserDetail } from '../../services/api'
 import api from '../../services/api'
 
-const BG = 'linear-gradient(180deg, #004D40 0%, #2E7D32 100%)'
+const BG = '#f3f4f6'
 
 export default function AdminMonitoring() {
   const [users, setUsers] = useState([])
@@ -84,17 +84,17 @@ export default function AdminMonitoring() {
     <div className="flex min-h-screen relative" style={{ background: BG }}>
       <AdminSidebar />
       <main className="flex-1 overflow-y-auto pb-20">
-        <div className="flex justify-between items-center px-8 py-7 border-b border-white/10 sticky top-0 bg-[#004D40]/80 backdrop-blur-md z-30">
+        <div className="flex justify-between items-center px-8 py-7 border-b border-gray-200 sticky top-0 bg-white z-30 shadow-sm">
           <div>
-            <h1 className="font-black text-3xl text-white tracking-tighter uppercase italic leading-none">User Monitoring</h1>
-            <p className="text-white/40 text-[10px] font-bold tracking-[0.3em] uppercase mt-1">Global Activity & Status</p>
+            <h1 className="font-black text-3xl text-gray-900 tracking-tighter uppercase italic leading-none">User Monitoring</h1>
+            <p className="text-gray-500 text-[10px] font-bold tracking-[0.3em] uppercase mt-1">Global Activity & Status</p>
           </div>
           <div className="flex items-center gap-6">
-            <button onClick={fetchUsers} className="p-2 hover:bg-white/10 rounded-full text-white/50 hover:text-white transition-all">
+            <button onClick={fetchUsers} className="p-2 hover:bg-gray-100 rounded-full text-gray-400 hover:text-gray-700 transition-all">
               <RefreshCw size={18} className={loading ? "animate-spin" : ""} />
             </button>
-            <div className="flex items-center gap-4 text-white/50 text-sm font-bold border-l border-white/10 pl-6">
-              <Bell size={22} className="text-white" />
+            <div className="flex items-center gap-4 text-gray-500 text-sm font-bold border-l border-gray-200 pl-6">
+              <Bell size={22} className="text-green-600" />
               <span className="uppercase tracking-widest text-[11px] font-black">{new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long' })}</span>
             </div>
           </div>
@@ -102,20 +102,20 @@ export default function AdminMonitoring() {
 
         <div className="p-8 max-w-6xl mx-auto">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-            <div className="bg-white/10 backdrop-blur-md border border-white/10 p-6 rounded-[32px] shadow-xl text-center">
+            <div className="bg-white border border-gray-100 p-6 rounded-[32px] shadow-xl text-center">
               <Activity className="text-green-400 mx-auto mb-2" size={24} />
-              <div className="text-3xl font-black text-white">{users.filter(u => u.status === 'online').length}</div>
-              <div className="text-[10px] font-black text-white/40 uppercase tracking-widest">User Online</div>
+              <div className="text-3xl font-black text-gray-900">{users.filter(u => u.status === 'online').length}</div>
+              <div className="text-[10px] font-black text-gray-500 uppercase tracking-widest">User Online</div>
             </div>
-            <div className="bg-white/10 backdrop-blur-md border border-white/10 p-6 rounded-[32px] shadow-xl text-center">
-              <Users className="text-blue-400 mx-auto mb-2" size={24} />
-              <div className="text-3xl font-black text-white">{users.length}</div>
-              <div className="text-[10px] font-black text-white/40 uppercase tracking-widest">Total User</div>
+            <div className="bg-white border border-gray-100 p-6 rounded-[32px] shadow-xl text-center">
+              <Users className="text-emerald-400 mx-auto mb-2" size={24} />
+              <div className="text-3xl font-black text-gray-900">{users.length}</div>
+              <div className="text-[10px] font-black text-gray-500 uppercase tracking-widest">Total User</div>
             </div>
-            <div className="bg-white/10 backdrop-blur-md border border-white/10 p-6 rounded-[32px] shadow-xl text-center">
+            <div className="bg-white border border-gray-100 p-6 rounded-[32px] shadow-xl text-center">
               <Clock className="text-yellow-400 mx-auto mb-2" size={24} />
-              <div className="text-3xl font-black text-white">{users.filter(u => u.status !== 'online').length}</div>
-              <div className="text-[10px] font-black text-white/40 uppercase tracking-widest">User Offline</div>
+              <div className="text-3xl font-black text-gray-900">{users.filter(u => u.status !== 'online').length}</div>
+              <div className="text-[10px] font-black text-gray-500 uppercase tracking-widest">User Offline</div>
             </div>
           </div>
 
@@ -207,7 +207,7 @@ export default function AdminMonitoring() {
                 <h4 className="text-3xl font-black text-gray-800">{selectedUser.ranking ? `#${selectedUser.ranking}` : '-'}</h4>
               </div>
               <div className="bg-gray-50 p-6 rounded-[32px] border border-gray-100 text-center">
-                <Activity className="text-blue-500 mx-auto mb-2" size={24} />
+                <Activity className="text-green-500 mx-auto mb-2" size={24} />
                 <p className="text-[9px] font-black text-gray-400 uppercase tracking-widest">Total Aksi</p>
                 <h4 className="text-3xl font-black text-gray-800">{selectedUser.total_actions || '0'}</h4>
               </div>

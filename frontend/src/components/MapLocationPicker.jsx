@@ -222,7 +222,7 @@ export default function MapLocationPicker({ onLocationSelect, initialLocation = 
           type="button"
           onClick={getCurrentLocation}
           disabled={loading}
-          className="flex items-center gap-1 px-3 py-1.5 bg-blue-500 text-white rounded-md text-xs hover:bg-blue-600 disabled:bg-gray-400"
+          className="flex items-center gap-1 px-3 py-1.5 bg-green-500 text-white rounded-md text-xs hover:bg-green-600 disabled:bg-gray-400"
         >
           {loading ? <Loader2 size={14} className="animate-spin" /> : <Navigation size={14} />}
           Lokasi Saya
@@ -244,7 +244,7 @@ export default function MapLocationPicker({ onLocationSelect, initialLocation = 
             }
           }}
           autoComplete="off"
-          className="w-full bg-gray-50 border-2 border-gray-300 rounded-lg px-4 py-2 text-sm focus:border-blue-500 outline-none"
+          className="w-full bg-gray-50 border-2 border-gray-300 rounded-lg px-4 py-2 text-sm focus:border-green-500 outline-none"
         />
         {searchLoading && <Loader2 size={16} className="animate-spin absolute right-3 top-2.5 text-gray-400" />}
         
@@ -256,7 +256,7 @@ export default function MapLocationPicker({ onLocationSelect, initialLocation = 
                 key={idx}
                 type="button"
                 onClick={() => selectFromSearch(result)}
-                className="w-full text-left px-4 py-2 hover:bg-blue-50 border-b border-gray-100 last:border-b-0 transition"
+                className="w-full text-left px-4 py-2 hover:bg-green-50 border-b border-gray-100 last:border-b-0 transition"
               >
                 <p className="text-sm font-medium text-gray-700 truncate">{getSuggestionTitle(result) || 'Lokasi ditemukan'}</p>
                 <p className="text-xs text-gray-400 truncate">{result?.display_name || getSuggestionTitle(result) || 'Pilih lokasi ini'}</p>
@@ -291,12 +291,12 @@ export default function MapLocationPicker({ onLocationSelect, initialLocation = 
         </Map>
       </div>
 
-      <div className="flex items-start gap-2 bg-blue-50 p-3 rounded-lg border border-blue-200">
-        <MapPin size={16} className="text-blue-600 mt-0.5 flex-shrink-0" />
+      <div className="flex items-start gap-2 bg-green-50 p-3 rounded-lg border border-green-200">
+        <MapPin size={16} className="text-green-600 mt-0.5 flex-shrink-0" />
         <div className="text-xs">
-          <p className="font-semibold text-blue-900">Lokasi: {address}</p>
-          <p className="text-blue-700 mt-1">Koordinat: {position[0].toFixed(6)}, {position[1].toFixed(6)}</p>
-          <p className="text-blue-700 mt-1">💡 Cari lokasi, klik di peta, atau gunakan "Lokasi Saya" untuk GPS</p>
+          <p className="font-semibold text-green-900">Lokasi: {address}</p>
+          <p className="text-green-700 mt-1">Koordinat: {position[0].toFixed(6)}, {position[1].toFixed(6)}</p>
+          <p className="text-green-700 mt-1">💡 Cari lokasi, klik di peta, atau gunakan "Lokasi Saya" untuk GPS</p>
         </div>
       </div>
     </div>

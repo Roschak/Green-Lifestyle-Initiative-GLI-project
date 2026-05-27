@@ -50,7 +50,7 @@ export default function UserSidebar() {
   return (
     <>
       <aside className="w-64 min-h-screen flex flex-col flex-shrink-0 sticky top-0 h-screen"
-        style={{ background: 'linear-gradient(180deg, #1B4332 0%, #2D6A4F 100%)' }}>
+        style={{ background: 'linear-gradient(180deg, #0F4C5C 0%, #2A9D8F 100%)' }}>
 
         <div className="p-5 pb-3">
           <div onClick={() => setShowPopup(true)}
@@ -75,8 +75,8 @@ export default function UserSidebar() {
             const isActive = location.pathname === item.path
             return (
               <div key={item.path} onClick={() => navigate(item.path)}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl mb-1 cursor-pointer text-white font-medium text-sm transition-all
-                  ${isActive ? 'bg-white/20 font-bold' : 'hover:bg-white/10 opacity-70 hover:opacity-100'}`}>
+                className={`flex items-center gap-3 px-4 py-3 rounded-xl mb-2 cursor-pointer text-white font-medium text-sm transition-all
+                  ${isActive ? 'bg-white/18 font-bold ring-1 ring-white/15' : 'hover:bg-white/12 opacity-80 hover:opacity-100'}`}>
                 <Icon size={18} /> {item.label}
               </div>
             )
@@ -88,7 +88,7 @@ export default function UserSidebar() {
       {showPopup && (
         <div className="fixed inset-0 z-[999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setShowPopup(false)}>
           <div className="bg-white rounded-[40px] w-full max-w-sm shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
-            <div className="bg-gradient-to-r from-green-700 to-green-500 p-6 relative">
+            <div className="bg-gradient-to-r from-emerald-700 to-teal-500 p-6 relative">
               <button onClick={() => setShowPopup(false)} className="absolute top-4 right-4 text-white/60 hover:text-white p-1 hover:bg-white/10 rounded-full">
                 <X size={18} />
               </button>

@@ -4,17 +4,31 @@ import AdminSidebar from '../../components/AdminSidebar'
 import { Bell, Search, Calendar, X, Camera, CheckCircle, Ban } from 'lucide-react'
 import { getAllActions, verifyAction } from '../../services/api'
 
-const BG = 'linear-gradient(180deg, #004D40 0%, #2E7D32 100%)'
+const BG = '#f3f4f6'
 
 const getImageUrl = (action) => {
   const source = action?.img || action?.imageUrl || action?.proof_img || action?.photo_url || action?.photo
   if (!source) return null
   const raw = String(source).trim()
-  if (!raw || raw === 'no-image.jpg' || raw === 'undefined' || raw === 'null') return null
+  if (!raw || raw === 'no-image.jpg' || raw === 'undefined' || raw === 'null' || raw === '[object Object]') return null
+  
+  // ✅ AUDIT FIX: Prevent base64 data URIs from being processed as URLs
+  if (raw.startsWith('data:image')) {
+    console.warn('⚠️ Base64 image data detected - ignoring to prevent 414 errors')
+    return null  // Reject base64 data URIs - they shouldn't be stored
+  }
+  
   if (raw.startsWith('http')) return raw
-  const normalized = String(raw).replace(/\\/g, '/').replace(/^\/+/, '')
+  const normalized = String(raw).replace(/\\/g, '/')
+  const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'dmgypsno6'
+  if (normalized.includes('/uploads/gli_actions/')) {
+    let publicId = normalized.split('/uploads/gli_actions/')[1]?.replace(/^\/+/, '')
+    if (!publicId || publicId === 'undefined' || publicId === 'null' || publicId === '[object Object]') return null
+    return `https://res.cloudinary.com/${cloudName}/image/upload/gli_actions/${publicId}`
+  }
+  const clean = normalized.replace(/^\/+/, '')
   const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
-  return `${apiUrl.replace('/api', '')}/${normalized}`
+  return `${apiUrl.replace('/api', '')}/${clean}`
 }
 
 const SectionHeader = ({ title, type, color, count, searchValue, onSearchChange, dateValue, onDateChange }) => (
@@ -210,17 +224,17 @@ export default function AdminModerasi() {
     <div className="flex min-h-screen" style={{ background: BG }}>
       <AdminSidebar />
       <main className="flex-1 overflow-y-auto">
-        <div className="flex justify-between items-center px-8 py-7 border-b border-white/10">
-          <h1 className="font-black text-3xl text-white tracking-tighter uppercase">Moderasi Konten</h1>
-          <div className="flex items-center gap-4 text-white/50 text-sm font-bold">
-            <Bell size={22} className="text-white" />
+        <div className="flex justify-between items-center px-8 py-7 border-b border-gray-200 bg-white sticky top-0 z-20 shadow-sm">
+          <h1 className="font-black text-3xl text-gray-900 tracking-tighter uppercase">Moderasi Konten</h1>
+          <div className="flex items-center gap-4 text-gray-500 text-sm font-bold">
+            <Bell size={22} className="text-green-600" />
             <span>{new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
           </div>
         </div>
 
         <div className="p-8 max-w-6xl mx-auto">
           {loading ? (
-            <div className="py-20 text-center text-white font-bold uppercase tracking-[0.3em] shimmer-loading inline-block px-8 py-4 rounded-2xl bg-white/5 border border-white/10">
+            <div className="py-20 text-center text-gray-500 font-bold uppercase tracking-[0.3em] shimmer-loading inline-block px-8 py-4 rounded-2xl bg-white border border-gray-200">
               Menghubungkan Server...
             </div>
           ) : (

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+ import { useState, useEffect } from 'react';
 import AdminSidebar from '../../components/AdminSidebar';
 import api from '../../services/api';
 
@@ -130,12 +130,12 @@ export default function AdminArticle() {
   };
 
   return (
-    <div className="flex h-screen bg-gray-100">
+    <div className="flex min-h-screen bg-gray-100">
       <AdminSidebar />
 
       <div className="flex-1 overflow-auto">
-        <div className="p-8">
-          <div className="flex justify-between items-center mb-8">
+        <div className="p-6 lg:p-8 max-w-7xl mx-auto">
+          <div className="flex justify-between items-center mb-8 gap-4">
             <h1 className="text-3xl font-bold text-gray-800">Manajemen Artikel</h1>
             <button
               onClick={handleCreateClick}
@@ -150,14 +150,14 @@ export default function AdminArticle() {
               <p className="text-gray-500">Memuat artikel...</p>
             </div>
           ) : articles.length === 0 ? (
-            <div className="bg-white rounded-lg p-8 text-center">
+            <div className="bg-white rounded-2xl p-8 text-center shadow-sm border border-gray-100">
               <p className="text-gray-500 text-lg">Belum ada artikel</p>
               <p className="text-gray-400">Klik tombol "Buat Artikel Baru" untuk membuat</p>
             </div>
           ) : (
             <div className="grid gap-4">
               {articles.map(article => (
-                <div key={article.id} className="bg-white rounded-lg shadow p-6">
+                <div key={article.id} className="bg-white rounded-2xl shadow p-6 border border-gray-100">
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
                       <div className="flex items-center gap-4">
@@ -169,7 +169,7 @@ export default function AdminArticle() {
                           {article.status === 'published' ? 'Dipublikasikan' : 'Draft'}
                         </span>
                         {article.featured && (
-                          <span className="px-3 py-1 rounded-full text-sm font-semibold bg-blue-100 text-blue-800">
+                          <span className="px-3 py-1 rounded-full text-sm font-semibold bg-emerald-100 text-emerald-800">
                             ⭐ Unggulan
                           </span>
                         )}
@@ -186,7 +186,7 @@ export default function AdminArticle() {
                   <div className="flex gap-3 mt-4">
                     <button
                       onClick={() => handleEditClick(article)}
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded font-semibold transition"
+                      className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded font-semibold transition"
                     >
                       Edit
                     </button>
@@ -216,13 +216,13 @@ export default function AdminArticle() {
       {/* Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6">
+          <div className="bg-white rounded-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+            <div className="p-6 lg:p-8">
               <h2 className="text-2xl font-bold mb-6">
                 {editingArticle ? 'Edit Artikel' : 'Buat Artikel Baru'}
               </h2>
 
-              <form onSubmit={handleSubmit} className="space-y-4">
+              <form onSubmit={handleSubmit} className="space-y-6">
                 <div>
                   <label className="block font-semibold mb-2">Judul Artikel *</label>
                   <input
@@ -263,7 +263,7 @@ export default function AdminArticle() {
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
                   <div>
                     <label className="block font-semibold mb-2">Kategori *</label>
                     <select
@@ -290,44 +290,44 @@ export default function AdminArticle() {
                   </div>
                 </div>
 
-                <div className="space-y-3">
-                  <label className="flex items-center gap-3">
+                <div className="space-y-4 rounded-2xl bg-gray-50 p-4 border border-gray-100">
+                  <label className="flex items-center gap-4 rounded-xl bg-white px-4 py-3 border border-gray-200">
                     <input
                       type="checkbox"
                       name="featured"
                       checked={formData.featured}
                       onChange={handleInputChange}
-                      className="w-4 h-4"
+                      className="w-4 h-4 shrink-0 accent-green-600"
                     />
-                    <span className="font-semibold">Artikel Unggulan</span>
+                    <span className="font-semibold leading-none">Artikel Unggulan</span>
                   </label>
 
-                  <label className="flex items-center gap-3">
+                  <label className="flex items-center gap-4 rounded-xl bg-white px-4 py-3 border border-gray-200">
                     <input
                       type="radio"
                       name="status"
                       value="published"
                       checked={formData.status === 'published'}
                       onChange={handleInputChange}
-                      className="w-4 h-4"
+                      className="w-4 h-4 shrink-0 accent-green-600"
                     />
-                    <span className="font-semibold">Publikasikan sekarang</span>
+                    <span className="font-semibold leading-none">Publikasikan sekarang</span>
                   </label>
 
-                  <label className="flex items-center gap-3">
+                  <label className="flex items-center gap-4 rounded-xl bg-white px-4 py-3 border border-gray-200">
                     <input
                       type="radio"
                       name="status"
                       value="draft"
                       checked={formData.status === 'draft'}
                       onChange={handleInputChange}
-                      className="w-4 h-4"
+                      className="w-4 h-4 shrink-0 accent-green-600"
                     />
-                    <span className="font-semibold">Simpan sebagai draft</span>
+                    <span className="font-semibold leading-none">Simpan sebagai draft</span>
                   </label>
                 </div>
 
-                <div className="flex gap-3 justify-end mt-6">
+                <div className="flex flex-col sm:flex-row gap-3 justify-end mt-6">
                   <button
                     type="button"
                     onClick={() => setShowModal(false)}

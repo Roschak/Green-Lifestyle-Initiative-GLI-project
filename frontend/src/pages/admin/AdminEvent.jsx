@@ -5,18 +5,35 @@ import { Plus, X, Calendar, Users, CheckCircle, XCircle, Upload, Eye, Bell, Exte
 import { useAuth } from '../../context/AuthContext'
 import api from '../../services/api'
 
-const BG = 'linear-gradient(180deg, #004D40 0%, #2E7D32 100%)'
+const BG = '#f3f4f6'
 const EVENT_DRAFT_KEY = 'gli_admin_event_draft'
 
-// Helper to get correct image URL (robust against string 'undefined'/'null')
+// Helper to get correct image URL (robust against string 'undefined'/'null' and base64 data URIs)
 const getImageUrl = (img) => {
   if (!img) return null
   const raw = String(img).trim()
-  if (!raw || raw === 'no-image.jpg' || raw === 'undefined' || raw === 'null') return null
+  if (!raw || raw === 'no-image.jpg' || raw === 'undefined' || raw === 'null' || raw === '[object Object]') return null
+  
+  // ✅ AUDIT FIX: Prevent base64 data URIs from being processed as URLs
+  if (raw.startsWith('data:image')) {
+    console.warn('⚠️ Base64 image data detected in thumbnail field - ignoring to prevent 414 errors')
+    return null  // Reject base64 data URIs - they shouldn't be stored
+  }
+  
   if (raw.startsWith('http')) return raw
   const normalized = String(raw).replace(/\\/g, '/')
   const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
   const baseUrl = apiUrl.replace('/api', '')
+
+  // Handle legacy Cloudinary public-id paths
+  const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'dmgypsno6'
+  if (normalized.includes('/uploads/gli_actions/')) {
+    let publicId = normalized.split('/uploads/gli_actions/')[1]?.replace(/^\/+/, '')
+    // Validate publicId is not empty or a placeholder value
+    if (!publicId || publicId === 'undefined' || publicId === 'null' || publicId === '[object Object]') return null
+    return `https://res.cloudinary.com/${cloudName}/image/upload/gli_actions/${publicId}`
+  }
+
   const uploadsIndex = normalized.lastIndexOf('/uploads/')
   if (uploadsIndex >= 0) return `${baseUrl}${normalized.slice(uploadsIndex)}`
   if (normalized.startsWith('uploads/')) return `${baseUrl}/${normalized}`
@@ -92,6 +109,16 @@ export default function AdminEvent() {
 
   useEffect(() => { fetchAll() }, [])
 
+  // ✅ AUDIT FIX: Cleanup object URLs to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      if (thumbPreview && typeof thumbPreview === 'string' && thumbPreview.startsWith('blob:')) {
+        URL.revokeObjectURL(thumbPreview)
+        console.log('🧹 Cleaned up thumbnail preview on unmount')
+      }
+    }
+  }, [thumbPreview])
+
   const fetchAll = async () => {
     setLoading(true)
     try {
@@ -140,16 +167,60 @@ export default function AdminEvent() {
   }
 
   const handleCreate = async () => {
-    if (!form.title || !form.registration_start || !form.registration_end || !form.event_start || !form.event_end)
-      return alert('Judul dan semua waktu wajib diisi!')
+    // ✅ AUDIT FIX: Comprehensive pre-submit validation
+    if (!form.title?.trim()) {
+      return alert('📝 Judul event wajib diisi!')
+    }
+    if (!form.registration_start || !form.registration_end || !form.event_start || !form.event_end) {
+      return alert('⏰ Semua waktu (pendaftaran & event) wajib diisi!')
+    }
+
+    // ✅ Image type validation
+    const isImageMode = (form.thumbnail_type || 'image') === 'image'
+    if (isImageMode && !thumbFile) {
+      return alert('📷 Gambar thumbnail wajib diupload jika memilih mode image!')
+    }
+
+    // ✅ File validation (if image selected)
+    if (thumbFile) {
+      const MAX_SIZE = 5 * 1024 * 1024 // 5MB
+      if (thumbFile.size > MAX_SIZE) {
+        return alert(`📦 File terlalu besar! Max 5MB, file Anda: ${(thumbFile.size / 1024 / 1024).toFixed(1)}MB`)
+      }
+      if (!thumbFile.type.startsWith('image/')) {
+        return alert(`🖼️ Format file harus gambar (JPG, PNG, WebP). Anda upload: ${thumbFile.type || 'unknown'}`)
+      }
+    }
+
+    // ✅ Prevent duplicate submits
+    if (submitting) {
+      return alert('⏳ Sedang memproses... Tunggu sebentar.')
+    }
+
     setSubmitting(true)
+    console.log('📤 Starting event creation with:', {
+      title: form.title,
+      has_thumbnail: !!thumbFile,
+      thumbnail_type: form.thumbnail_type,
+      file_size: thumbFile?.size,
+      file_type: thumbFile?.type
+    })
+
     try {
       const data = new FormData()
       Object.entries(form).forEach(([k, v]) => data.append(k, v))
-      if (thumbFile) data.append('thumbnail', thumbFile)
+      if (thumbFile) {
+        data.append('thumbnail', thumbFile)
+        console.log('📁 Thumbnail file added to FormData')
+      }
 
+      console.log('🚀 Posting to /events/create')
       const res = await api.post('/events/create', data)
-      console.log('✅ Event created:', res.data);
+      console.log('✅ Event created successfully:', res.data)
+
+      // ✅ Clean up on success
+      URL.revokeObjectURL(thumbPreview)
+      console.log('🧹 Cleaned up thumbnail preview')
 
       setCreateModal(false)
       setForm({
@@ -157,15 +228,23 @@ export default function AdminEvent() {
         thumbnail_type: 'image', thumbnail_text: '', thumbnail_color: '#22c55e',
         registration_start: '', registration_end: '', event_start: '', event_end: ''
       })
-      setThumbFile(null); setThumbPreview(null)
+      setThumbFile(null)
+      setThumbPreview(null)
       localStorage.removeItem(EVENT_DRAFT_KEY)
       fetchAll()
-      alert('✅ Event berhasil dibuat!')
+      alert('✅ Event berhasil dibuat! Menunggu persetujuan admin.')
     } catch (err) {
-      console.error('Create error:', err)
-      alert(err.response?.data?.message || 'Gagal membuat event')
+      console.error('❌ Create error:', {
+        message: err.message,
+        response: err.response?.data,
+        status: err.response?.status
+      })
+      const errorMsg = err.response?.data?.message || err.message || 'Gagal membuat event'
+      alert(`❌ ${errorMsg}`)
     }
-    finally { setSubmitting(false) }
+    finally { 
+      setSubmitting(false)
+    }
   }
 
   // Daftar event dari board (admin ikut event orang lain)
@@ -204,17 +283,17 @@ export default function AdminEvent() {
       <main className="flex-1 overflow-y-auto">
 
         {/* HEADER */}
-        <div className="flex justify-between items-center px-8 py-7 border-b border-white/10">
+        <div className="flex justify-between items-center px-8 py-7 border-b border-gray-200 bg-white sticky top-0 z-20 shadow-sm">
           <div>
-            <h1 className="font-black text-3xl text-white tracking-tighter uppercase italic">Event Manager</h1>
-            <p className="text-white/40 text-[10px] font-bold tracking-[0.3em] uppercase mt-1">Kelola & Ikuti Event</p>
+            <h1 className="font-black text-3xl text-gray-900 tracking-tighter uppercase italic">Event Manager</h1>
+            <p className="text-gray-500 text-[10px] font-bold tracking-[0.3em] uppercase mt-1">Kelola & Ikuti Event</p>
           </div>
           <div className="flex items-center gap-4">
             <button onClick={() => setCreateModal(true)}
-              className="flex items-center gap-2 px-6 py-3 bg-green-400 text-green-900 font-black text-xs uppercase rounded-2xl hover:bg-green-300 transition">
+              className="flex items-center gap-2 px-6 py-3 bg-green-600 text-white font-black text-xs uppercase rounded-2xl hover:bg-green-700 transition">
               <Plus size={16} /> Buat Event
             </button>
-            <Bell size={22} className="text-white" />
+            <Bell size={22} className="text-green-600" />
           </div>
         </div>
 
@@ -222,7 +301,7 @@ export default function AdminEvent() {
         <div className="px-8 pt-6 flex gap-3">
           {[{ key: 'board', label: 'Board Event' }, { key: 'myevent', label: 'Event Saya' }].map(t => (
             <button key={t.key} onClick={() => setActiveTab(t.key)}
-              className={`px-6 py-2.5 rounded-2xl font-black text-xs uppercase tracking-widest transition ${activeTab === t.key ? 'bg-white text-green-800' : 'bg-white/10 text-white/60 hover:bg-white/20'}`}>
+              className={`px-6 py-2.5 rounded-2xl font-black text-xs uppercase tracking-widest transition ${activeTab === t.key ? 'bg-white text-green-800 border border-green-100' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
               {t.label}
             </button>
           ))}
@@ -230,13 +309,13 @@ export default function AdminEvent() {
 
         <div className="p-8 max-w-6xl mx-auto">
           {loading ? (
-            <div className="py-20 text-center text-white font-bold uppercase tracking-widest shimmer-loading inline-block px-8 py-4 rounded-2xl bg-white/5 border border-white/10">Memuat...</div>
+            <div className="py-20 text-center text-gray-500 font-bold uppercase tracking-widest shimmer-loading inline-block px-8 py-4 rounded-2xl bg-white border border-gray-200">Memuat...</div>
           ) : activeTab === 'board' ? (
             // ===== BOARD EVENT =====
             <div>
               {allEvents.length === 0 ? (
-                <div className="py-20 text-center bg-white/5 rounded-[40px] border border-dashed border-white/20">
-                  <p className="text-white/30 font-black uppercase tracking-widest text-xs">Belum ada event</p>
+                <div className="py-20 text-center bg-white rounded-[40px] border border-dashed border-gray-200">
+                  <p className="text-gray-400 font-black uppercase tracking-widest text-xs">Belum ada event</p>
                 </div>
               ) : (
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -251,7 +330,7 @@ export default function AdminEvent() {
                         <div className="relative h-44">
                           <EventThumb event={event} />
                           <div className="absolute top-3 left-3">
-                            <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest ${isAdmin ? 'bg-blue-500 text-white' : 'bg-green-500 text-white'}`}>
+                            <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest ${isAdmin ? 'bg-green-600 text-white' : 'bg-green-500 text-white'}`}>
                               {isAdmin ? '👑 Admin' : '🌿 User'}
                             </span>
                           </div>
@@ -285,7 +364,7 @@ export default function AdminEvent() {
                             )}
                             {!isMyEvent && myReg && (
                               <button onClick={() => setSuccessData({ ...myReg, event_title: event.title, wa_link: event.wa_link, medal_name: event.medal_name, is_gli_member: myReg.is_gli_member })}
-                                className="flex-1 py-2 bg-blue-50 text-blue-600 text-[10px] font-black rounded-xl hover:bg-blue-100 transition">
+                                className="flex-1 py-2 bg-green-50 text-green-700 text-[10px] font-black rounded-xl hover:bg-green-100 transition">
                                 ✅ Terdaftar
                               </button>
                             )}
@@ -353,7 +432,7 @@ export default function AdminEvent() {
 
       {/* ===== MODAL DETAIL ===== */}
       {detailModal && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setDetailModal(null)}>
+          <div className="fixed inset-0 z-[110] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm" onClick={() => setDetailModal(null)}>
           <div className="bg-white rounded-[40px] w-full max-w-lg shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
             <div className="relative h-52">
               <EventThumb event={detailModal} />
@@ -361,7 +440,7 @@ export default function AdminEvent() {
                 <X size={14} />
               </button>
               <div className="absolute bottom-3 left-3 flex gap-2">
-                <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase ${detailModal.host_role === 'admin' ? 'bg-blue-500 text-white' : 'bg-green-500 text-white'}`}>
+                <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase ${detailModal.host_role === 'admin' ? 'bg-green-600 text-white' : 'bg-green-500 text-white'}`}>
                   {detailModal.host_role === 'admin' ? '👑 Admin' : '🌿 User'} · {detailModal.host_name}
                 </span>
                 <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase ${STATUS_MAP[detailModal.status]?.color}`}>
@@ -498,7 +577,31 @@ export default function AdminEvent() {
                 {form.thumbnail_type === 'image' ? (
                   <div onClick={() => fileInputRef.current?.click()}
                     className="border-2 border-dashed border-gray-200 rounded-2xl p-6 text-center cursor-pointer hover:border-green-400 transition">
-                    <input type="file" hidden ref={fileInputRef} accept="image/*" onChange={e => { const f = e.target.files[0]; if (f) { setThumbFile(f); setThumbPreview(URL.createObjectURL(f)) } }} />
+                    <input type="file" hidden ref={fileInputRef} accept="image/*" onChange={e => {
+                      const f = e.target.files[0]
+                      if (!f) return
+                      
+                      // ✅ AUDIT FIX: Validate MIME type
+                      if (!f.type.startsWith('image/')) {
+                        alert(`🖼️ Format file harus gambar. Anda upload: ${f.type || 'unknown'}`)
+                        console.warn('Invalid MIME type:', f.type)
+                        return
+                      }
+                      
+                      // ✅ AUDIT FIX: Validate file size before preview
+                      const MAX_SIZE = 5 * 1024 * 1024 // 5MB
+                      if (f.size > MAX_SIZE) {
+                        alert(`📦 File terlalu besar! Max 5MB, file Anda: ${(f.size / 1024 / 1024).toFixed(1)}MB`)
+                        console.warn('File too large:', f.size)
+                        return
+                      }
+                      
+                      console.log('✅ File validation passed:', { name: f.name, type: f.type, size: f.size })
+                      setThumbFile(f)
+                      const previewUrl = URL.createObjectURL(f)
+                      setThumbPreview(previewUrl)
+                      console.log('📸 Thumbnail preview created:', previewUrl)
+                    }} />
                     {thumbPreview ? <img src={thumbPreview} className="w-full h-32 object-cover rounded-xl" /> :
                       <div className="text-gray-300"><Upload size={32} className="mx-auto mb-2" /><p className="text-xs font-bold">Klik upload gambar</p></div>}
                   </div>
@@ -576,7 +679,7 @@ export default function AdminEvent() {
                 🏅 Terdaftar sebagai Member GLI! Upload bukti saat event untuk dapat <strong>{successData.medal_name}</strong>.
               </div>
             ) : (
-              <div className="bg-blue-50 rounded-2xl p-3 mt-3 mb-3 text-xs text-blue-600 font-bold">
+              <div className="bg-green-50 rounded-2xl p-3 mt-3 mb-3 text-xs text-green-700 font-bold">
                 👤 Terdaftar sebagai Guest.
               </div>
             )}

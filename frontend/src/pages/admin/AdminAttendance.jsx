@@ -155,7 +155,7 @@ const AdminAttendance = () => {
         {/* Statistics */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <div className="bg-white rounded-lg shadow p-6 text-center">
-            <div className="text-3xl font-bold text-blue-600 mb-2">{attendance.total}</div>
+            <div className="text-3xl font-bold text-green-600 mb-2">{attendance.total}</div>
             <p className="text-gray-600">Total Peserta</p>
           </div>
           <div className="bg-white rounded-lg shadow p-6 text-center">
@@ -190,7 +190,7 @@ const AdminAttendance = () => {
           </button>
           <button
             onClick={loadAttendance}
-            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition flex items-center justify-center gap-2"
+            className="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-lg transition flex items-center justify-center gap-2"
           >
             🔄 Refresh
           </button>
@@ -219,7 +219,7 @@ const AdminAttendance = () => {
                     <td className="px-6 py-4 text-gray-600 text-sm">{item.email}</td>
                     <td className="px-6 py-4">
                       <span className={`px-3 py-1 rounded-full text-sm font-semibold ${item.is_member
-                        ? 'bg-blue-100 text-blue-700'
+                        ? 'bg-green-100 text-green-700'
                         : 'bg-gray-100 text-gray-700'
                         }`}>
                         {item.is_member ? 'Member' : 'Guest'}
@@ -247,7 +247,7 @@ const AdminAttendance = () => {
                           href={item.photo_url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-blue-600 hover:text-blue-800 font-semibold"
+                          className="text-green-600 hover:text-green-800 font-semibold"
                         >
                           👁️ Lihat
                         </a>

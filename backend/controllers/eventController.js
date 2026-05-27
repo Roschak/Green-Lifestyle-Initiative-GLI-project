@@ -7,8 +7,64 @@ const { deleteImage } = require('../utils/cloudinaryHelper');
 const { awardMedalToUser } = require('./userController');
 const { uploadToFirebaseStorage } = require('../config/firebaseStorage');
 
+const normalizeImageUrl = (val) => {
+    if (!val) return val;
+    // already a full URL
+    if (typeof val === 'string' && (val.startsWith('http://') || val.startsWith('https://'))) {
+        return val;
+    }
+    if (typeof val === 'string' && (val === '[object Object]' || val === 'undefined' || val === 'null')) {
+        return null;
+    }
+    // values like '/uploads/gli_actions/<public_id>' or '/uploads/<filename>'
+    if (typeof val === 'string' && val.startsWith('/uploads/')) {
+                // Only convert if it's Cloudinary path; skip others
+                if (!val.includes('gli_actions')) {
+                    return val;
+                }
+        // extract public id part after '/uploads/'
+        const parts = val.split('/uploads/');
+        let publicId = parts[1] || parts[0];
+        // Validate publicId is not a placeholder/undefined value
+        if (!publicId || publicId === 'undefined' || publicId === 'null' || publicId === '[object Object]') {
+            return null;
+        }
+        const cloudName = process.env.CLOUDINARY_CLOUD_NAME || 'dmgypsno6';
+        return `https://res.cloudinary.com/${cloudName}/image/upload/${publicId}`;
+    }
+    // if it's an object from multer/Cloudinary storage, try to read secure_url or public_id
+    if (typeof val === 'object') {
+        if (val.secure_url) return val.secure_url;
+        if (val.public_id && val.public_id !== 'undefined' && val.public_id !== 'null' && val.public_id !== '[object Object]') {
+            const cloudName = process.env.CLOUDINARY_CLOUD_NAME || 'dmgypsno6';
+            return `https://res.cloudinary.com/${cloudName}/image/upload/${val.public_id}`;
+        }
+        // Legacy broken records may contain raw multer payload with image buffer.
+        if (val.buffer) {
+            try {
+                const mimeType = val.mimetype || 'image/jpeg';
+                const bufferValue = Buffer.isBuffer(val.buffer)
+                    ? val.buffer
+                    : (Array.isArray(val.buffer?.data) ? Buffer.from(val.buffer.data) : null);
+                if (bufferValue && bufferValue.length > 0) {
+                    return `data:${mimeType};base64,${bufferValue.toString('base64')}`;
+                }
+            } catch (err) {
+                console.warn('⚠️ Failed to normalize legacy thumbnail buffer:', err.message);
+            }
+        }
+        // Unresolvable upload object (e.g. raw multer payload) should not become image URL.
+        return null;
+    }
+    return val;
+};
+
 const resolveUploadedImageUrl = (file) => {
     if (!file) return null;
+
+    // Try normalized URL first (handles Cloudinary and path conversions)
+    const normalized = normalizeImageUrl(file);
+    if (normalized) return normalized;
 
     const directUrl = file.secure_url || file.url || file.path;
     if (!directUrl) return null;
@@ -21,13 +77,23 @@ const resolveUploadedImageUrl = (file) => {
         return `/uploads/${file.filename}`;
     }
 
-    const normalized = String(directUrl).replace(/\\/g, '/');
-    const uploadsIndex = normalized.lastIndexOf('/uploads/');
+    const normalizedPath = String(directUrl).replace(/\\/g, '/');
+    const uploadsIndex = normalizedPath.lastIndexOf('/uploads/');
     if (uploadsIndex >= 0) {
-        return normalized.slice(uploadsIndex);
+        return normalizedPath.slice(uploadsIndex);
     }
 
-    return `/${path.posix.normalize(normalized).replace(/^\/+/, '')}`;
+    return `/${path.posix.normalize(normalizedPath).replace(/^\/+/, '')}`;
+};
+
+// Helper: normalize event for response - ensure thumbnail URL is a full CDN URL
+const normalizeEventForResponse = (event) => {
+    if (!event) return event;
+    const normalized = { ...event };
+    if (normalized.thumbnail) {
+        normalized.thumbnail = normalizeImageUrl(normalized.thumbnail);
+    }
+    return normalized;
 };
 
 const toDate = (value) => {
@@ -35,6 +101,67 @@ const toDate = (value) => {
     if (value?.toDate) return value.toDate();
     const parsed = new Date(value);
     return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+// ✅ AUDIT FIX: Helper to upload with timeout and validation
+const uploadThumbnailWithTimeout = async (file, maxRetries = 2) => {
+    if (!file) return { success: false, url: null, error: 'No file provided' };
+    
+    // ✅ AUDIT FIX: Validate MIME type
+    if (!file.mimetype?.startsWith('image/')) {
+        console.warn('❌ MIME type validation failed:', file.mimetype);
+        return { success: false, url: null, error: 'Invalid file type - must be image' };
+    }
+    
+    // ✅ AUDIT FIX: Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+        console.warn('❌ File size validation failed:', file.size);
+        return { success: false, url: null, error: 'File too large - max 5MB' };
+    }
+    
+    let lastError = null;
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+            console.log(`📤 Upload attempt ${attempt}/${maxRetries}...`);
+            
+            // ✅ AUDIT FIX: Upload with timeout (30 seconds per attempt)
+            const uploadPromise = (async () => {
+                if (file.buffer) {
+                    const fileName = file.originalname || `event-${Date.now()}.jpg`;
+                    return await uploadToFirebaseStorage(file.buffer, fileName, 'events');
+                } else {
+                    return resolveUploadedImageUrl(file);
+                }
+            })();
+            
+            const timeoutPromise = new Promise((_, reject) =>
+                setTimeout(() => reject(new Error('Upload timeout')), 30000)
+            );
+            
+            const thumbnailUrl = await Promise.race([uploadPromise, timeoutPromise]);
+            
+            // ✅ AUDIT FIX: Validate result is actually a valid URL
+            if (!thumbnailUrl || typeof thumbnailUrl !== 'string') {
+                throw new Error('Invalid upload response - no URL returned');
+            }
+            if (thumbnailUrl === 'undefined' || thumbnailUrl === 'null' || thumbnailUrl.includes('undefined')) {
+                throw new Error('Upload returned invalid URL');
+            }
+            
+            console.log(`✅ Upload successful on attempt ${attempt}:`, thumbnailUrl);
+            return { success: true, url: thumbnailUrl, error: null };
+        } catch (err) {
+            lastError = err;
+            console.error(`❌ Upload attempt ${attempt} failed:`, err.message);
+            if (attempt < maxRetries) {
+                console.log(`⏳ Retrying in 1 second...`);
+                await new Promise(r => setTimeout(r, 1000));
+            }
+        }
+    }
+    
+    console.error(`❌ Upload failed after ${maxRetries} attempts:`, lastError?.message);
+    return { success: false, url: null, error: lastError?.message || 'Upload failed' };
 };
 
 const isActivePublicEvent = (eventData) => {
@@ -136,27 +263,34 @@ exports.createEvent = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Waktu event tidak valid - mulai harus sebelum akhir' });
         }
 
-        // Upload thumbnail jika ada
+        // ✅ AUDIT FIX: Upload thumbnail with validation, timeout, and retry
         let thumbnailUrl = null;
         if (req.file) {
-            // If multer used memoryStorage (buffer available), upload buffer to Firebase Storage
-            if (req.file.buffer) {
-                try {
-                    const fileName = req.file.originalname || `event-${Date.now()}.jpg`;
-                    thumbnailUrl = await uploadToFirebaseStorage(req.file.buffer, fileName, 'events');
-                    console.log('✅ Uploaded thumbnail buffer to Firebase Storage:', thumbnailUrl);
-                } catch (upErr) {
-                    console.error('❌ Failed uploading thumbnail buffer to Firebase Storage:', upErr.message);
-                    // Fallback to resolving existing object (may be Cloudinary object)
-                    thumbnailUrl = resolveUploadedImageUrl(req.file);
-                    if (!thumbnailUrl) {
-                        console.warn('⚠️ Thumbnail upload failed in hosting, continuing without thumbnail');
-                    }
+            console.log('📁 Processing thumbnail file:', {
+                originalname: req.file.originalname,
+                mimetype: req.file.mimetype,
+                size: req.file.size,
+                has_buffer: !!req.file.buffer
+            });
+            
+            const uploadResult = await uploadThumbnailWithTimeout(req.file, 2);
+            if (!uploadResult.success) {
+                console.warn('⚠️ Thumbnail upload failed:', uploadResult.error);
+                // For image type, upload failure is critical
+                if ((thumbnail_type || 'image') === 'image') {
+                    return res.status(400).json({
+                        success: false,
+                        message: `Thumbnail upload gagal: ${uploadResult.error}`
+                    });
                 }
+                // For text type, continue without thumbnail
+                console.log('⚠️ Continuing without thumbnail (text mode selected)');
             } else {
-                thumbnailUrl = resolveUploadedImageUrl(req.file);
+                thumbnailUrl = uploadResult.url;
+                console.log('✅ Thumbnail uploaded successfully:', thumbnailUrl);
             }
         } else if ((thumbnail_type || 'image') === 'image') {
+            console.warn('❌ Image type selected but no file provided');
             return res.status(400).json({
                 success: false,
                 message: 'Thumbnail gambar wajib diupload jika memilih mode image.'
@@ -194,25 +328,73 @@ exports.createEvent = async (req, res) => {
             created_at: admin.firestore.FieldValue.serverTimestamp()
         };
 
-        // Only add thumbnail if uploaded
-        if (thumbnailUrl) {
+        // ✅ AUDIT FIX: Only add thumbnail if valid URL
+        if (thumbnailUrl && typeof thumbnailUrl === 'string' && thumbnailUrl.length > 0) {
             eventData.thumbnail = thumbnailUrl;
+            console.log('✅ Thumbnail URL added to event data:', thumbnailUrl);
+        } else {
+            console.warn('⚠️ No valid thumbnail URL, saving event without thumbnail');
         }
 
-        const docRef = await db.collection('events').add(eventData);
+        // ✅ AUDIT FIX: Database write with error handling
+        let docRef;
+        try {
+            docRef = await db.collection('events').add(eventData);
+            console.log('✅ Event successfully saved to Firestore:', {
+                eventId: docRef.id,
+                title: eventData.title,
+                has_thumbnail: !!eventData.thumbnail,
+                thumbnail_type: eventData.thumbnail_type
+            });
+        } catch (dbErr) {
+            console.error('❌ Firestore write failed:', dbErr.message);
+            throw new Error(`Failed to save event: ${dbErr.message}`);
+        }
 
-        console.log('📝 Event dibuat (menunggu approval):', docRef.id);
-
-        return res.status(201).json({
+        // ✅ AUDIT FIX: Comprehensive success response
+        const successResponse = {
             success: true,
             message: 'Event berhasil dibuat! Menunggu persetujuan admin.',
             eventId: docRef.id,
-            approvalStatus: 'pending'
+            approvalStatus: 'pending',
+            thumbnail: thumbnailUrl || null,
+            thumbnail_type: eventData.thumbnail_type
+        };
+
+        console.log('📤 Sending success response:', {
+            eventId: successResponse.eventId,
+            has_thumbnail: !!successResponse.thumbnail
         });
 
+        return res.status(201).json(successResponse);
+
     } catch (err) {
-        console.error('❌ Create Event Error:', err);
-        return res.status(500).json({ success: false, message: err.message });
+        console.error('❌ Create Event Error:', {
+            message: err.message,
+            stack: err.stack,
+            code: err.code
+        });
+        
+        // ✅ AUDIT FIX: More descriptive error messages
+        let statusCode = 500;
+        let errorMessage = err.message;
+        
+        if (err.message?.includes('upload')) {
+            statusCode = 400;
+            errorMessage = 'Gagal upload thumbnail: ' + err.message;
+        } else if (err.message?.includes('Firestore') || err.message?.includes('database')) {
+            statusCode = 500;
+            errorMessage = 'Gagal menyimpan event: ' + err.message;
+        } else if (err.message?.includes('Invalid')) {
+            statusCode = 400;
+            errorMessage = err.message;
+        }
+        
+        return res.status(statusCode).json({ 
+            success: false, 
+            message: errorMessage,
+            error_type: 'create_event_error'
+        });
     }
 };
 
@@ -230,6 +412,11 @@ exports.getAllEvents = async (req, res) => {
             if (data.registration_end?.toDate) data.registration_end = data.registration_end.toDate().toISOString();
             if (data.event_start?.toDate) data.event_start = data.event_start.toDate().toISOString();
             if (data.event_end?.toDate) data.event_end = data.event_end.toDate().toISOString();
+
+            // Normalize thumbnail URL (convert Cloudinary paths to CDN URLs)
+            if (data.thumbnail) {
+                data.thumbnail = normalizeImageUrl(data.thumbnail);
+            }
 
             // ✅ FIXED: Calculate status based on current time
             const dataForStatusCalc = {
@@ -280,6 +467,11 @@ exports.getAllEvents = async (req, res) => {
                     if (data.registration_end?.toDate) data.registration_end = data.registration_end.toDate().toISOString();
                     if (data.event_start?.toDate) data.event_start = data.event_start.toDate().toISOString();
                     if (data.event_end?.toDate) data.event_end = data.event_end.toDate().toISOString();
+
+                    // Normalize thumbnail URL (convert Cloudinary paths to CDN URLs)
+                    if (data.thumbnail) {
+                        data.thumbnail = normalizeImageUrl(data.thumbnail);
+                    }
 
                     // ✅ FIXED: Calculate status based on current time
                     const dataForStatusCalc = {
@@ -479,6 +671,11 @@ exports.getHostEvents = async (req, res) => {
             if (data.event_start?.toDate) data.event_start = data.event_start.toDate().toISOString();
             if (data.event_end?.toDate) data.event_end = data.event_end.toDate().toISOString();
 
+            // Normalize thumbnail URL (convert Cloudinary paths to CDN URLs)
+            if (data.thumbnail) {
+                data.thumbnail = normalizeImageUrl(data.thumbnail);
+            }
+
             docsArray.push({ id: doc.id, ...data });
         });
 
@@ -513,6 +710,12 @@ exports.getHostEvents = async (req, res) => {
                     if (data.registration_end?.toDate) data.registration_end = data.registration_end.toDate().toISOString();
                     if (data.event_start?.toDate) data.event_start = data.event_start.toDate().toISOString();
                     if (data.event_end?.toDate) data.event_end = data.event_end.toDate().toISOString();
+
+                    // Normalize thumbnail URL (convert Cloudinary paths to CDN URLs)
+                    if (data.thumbnail) {
+                        data.thumbnail = normalizeImageUrl(data.thumbnail);
+                    }
+
                     docsArray.push({ id: doc.id, ...data });
                 });
 
@@ -569,13 +772,19 @@ exports.getUserRegistrations = async (req, res) => {
                     wa_link: eventData.wa_link || null,
                     thumbnail_type: eventData.thumbnail_type || 'color',
                     thumbnail_text: eventData.thumbnail_text || '',
-                    thumbnail_color: eventData.thumbnail_color || '#6366F1'
+                    thumbnail_color: eventData.thumbnail_color || '#6366F1',
+                    thumbnail: eventData.thumbnail || null
                 };
                 
                 // Convert registration timestamps
                 if (merged.registered_at?.toDate) merged.registered_at = merged.registered_at.toDate().toISOString();
                 if (merged.event_start?.toDate) merged.event_start = merged.event_start.toDate().toISOString();
                 if (merged.event_end?.toDate) merged.event_end = merged.event_end.toDate().toISOString();
+                
+                // Normalize thumbnail URL
+                if (merged.thumbnail) {
+                    merged.thumbnail = normalizeImageUrl(merged.thumbnail);
+                }
                 
                 registrations.push(merged);
             }
@@ -849,13 +1058,15 @@ exports.getPendingEvents = async (req, res) => {
         for (const doc of snap.docs) {
             const data = doc.data();
             const hostDoc = await db.collection('users').doc(data.host_id).get();
-            events.push({
+            const eventData = {
                 id: doc.id,
                 title: data.title,
                 host_name: hostDoc.exists ? hostDoc.data().name : 'Unknown',
                 created_at: data.created_at?.toDate?.().toISOString() || '',
                 ...data
-            });
+            };
+            // Normalize thumbnail before returning
+            events.push(normalizeEventForResponse(eventData));
         }
 
         return res.json({

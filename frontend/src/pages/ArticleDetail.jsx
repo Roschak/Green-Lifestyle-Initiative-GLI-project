@@ -5,6 +5,13 @@ import { ArrowLeft } from 'lucide-react'
 
 const getImageUrl = (img) => {
   if (!img || img === 'no-image.jpg' || img === 'undefined' || img === 'null') return null
+  
+  // ✅ AUDIT FIX: Prevent base64 data URIs from being processed as URLs
+  if (String(img).startsWith('data:image')) {
+    console.warn('⚠️ Base64 image data detected - ignoring to prevent 414 errors')
+    return null  // Reject base64 data URIs - they shouldn't be stored
+  }
+  
   if (String(img).startsWith('http')) return String(img)
   
   const normalized = String(img).replace(/\\/g, '/')
@@ -13,8 +20,8 @@ const getImageUrl = (img) => {
   const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'dmgypsno6'
 
   if (normalized.includes('/uploads/gli_actions/')) {
-    const publicId = normalized.split('/uploads/gli_actions/')[1].replace(/^\/+/,'')
-    if (!publicId || publicId === 'undefined' || publicId === 'null') return null
+    let publicId = normalized.split('/uploads/gli_actions/')[1]?.replace(/^\/+/,'')
+    if (!publicId || publicId === 'undefined' || publicId === 'null' || publicId === '[object Object]') return null
     return `https://res.cloudinary.com/${cloudName}/image/upload/${publicId}`
   }
 

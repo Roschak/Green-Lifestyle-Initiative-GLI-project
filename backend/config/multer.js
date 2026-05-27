@@ -1,7 +1,5 @@
 // backend/config/multer.js
 const multer = require('multer');
-const path = require('path');
-const fs = require('fs');
 
 // Check if Cloudinary is configured
 const hasCloudinary = process.env.CLOUDINARY_CLOUD_NAME &&
@@ -52,33 +50,10 @@ if (hasCloudinary) {
     upload = multer({ storage: multer.memoryStorage() });
   }
 } else {
-  console.log('⚠️ Cloudinary not configured, using local disk storage for uploads');
-
-  // Use a safe writable temp directory (works on serverless) or allow override via env
-  const os = require('os');
-  const uploadsDir = process.env.UPLOADS_DIR || path.join(os.tmpdir(), 'uploads');
-  try {
-    if (!fs.existsSync(uploadsDir)) {
-      fs.mkdirSync(uploadsDir, { recursive: true });
-    }
-  } catch (mkdirErr) {
-    console.error('❌ Could not create uploads dir:', uploadsDir, mkdirErr.message);
-    // Fall back to memory storage to avoid EROFS on read-only filesystems
-    upload = multer({ storage: multer.memoryStorage() });
-    module.exports = upload;
-    return;
-  }
-
-  const storage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, uploadsDir),
-    filename: (req, file, cb) => {
-      const ext = path.extname(file.originalname || '').toLowerCase();
-      cb(null, `${Date.now()}-${Math.round(Math.random() * 1e9)}${ext || '.jpg'}`);
-    }
-  });
+  console.log('⚠️ Cloudinary not configured, using memory storage for uploads');
 
   upload = multer({
-    storage,
+    storage: multer.memoryStorage(),
     limits: { fileSize: 5 * 1024 * 1024 },
     fileFilter: (req, file, cb) => {
       if (file.mimetype && file.mimetype.startsWith('image/')) {

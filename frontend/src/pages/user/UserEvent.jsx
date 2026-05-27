@@ -6,18 +6,35 @@ import { Plus, X, Calendar, Users, CheckCircle, XCircle, Upload, Eye, Bell, Exte
 import { useAuth } from '../../context/AuthContext'
 import api from '../../services/api'
 
-const BG = 'linear-gradient(180deg, #004D40 0%, #2E7D32 100%)'
+const BG = '#f3f4f6'
 const EVENT_DRAFT_KEY = 'gli_user_event_draft'
 
-// Helper to get correct image URL (robust against string 'undefined'/'null')
+// Helper to get correct image URL (robust against string 'undefined'/'null' and base64 data URIs)
 const getImageUrl = (img) => {
   if (!img) return null
   const raw = String(img).trim()
-  if (!raw || raw === 'no-image.jpg' || raw === 'undefined' || raw === 'null') return null
+  if (!raw || raw === 'no-image.jpg' || raw === 'undefined' || raw === 'null' || raw === '[object Object]') return null
+  
+  // ✅ AUDIT FIX: Prevent base64 data URIs from being processed as URLs
+  if (raw.startsWith('data:image')) {
+    console.warn('⚠️ Base64 image data detected in thumbnail field - ignoring to prevent 414 errors')
+    return null  // Reject base64 data URIs - they shouldn't be stored
+  }
+  
   if (raw.startsWith('http')) return raw
   const normalized = String(raw).replace(/\\/g, '/')
   const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000/api'
   const baseUrl = apiUrl.replace('/api', '')
+
+  // Handle legacy Cloudinary public-id paths
+  const cloudName = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME || 'dmgypsno6'
+  if (normalized.includes('/uploads/gli_actions/')) {
+    let publicId = normalized.split('/uploads/gli_actions/')[1]?.replace(/^\/+/, '')
+    // Validate publicId is not empty or a placeholder value
+    if (!publicId || publicId === 'undefined' || publicId === 'null' || publicId === '[object Object]') return null
+    return `https://res.cloudinary.com/${cloudName}/image/upload/gli_actions/${publicId}`
+  }
+
   const uploadsIndex = normalized.lastIndexOf('/uploads/')
   if (uploadsIndex >= 0) return `${baseUrl}${normalized.slice(uploadsIndex)}`
   if (normalized.startsWith('uploads/')) return `${baseUrl}/${normalized}`
@@ -66,6 +83,8 @@ export default function UserEvent() {
   const [registerModal, setRegisterModal] = useState(null) // daftar event dari board
   const [successData, setSuccessData] = useState(null)
   const [regStatus, setRegStatus] = useState({})   // {eventId: registration}
+  const [registerConfirm, setRegisterConfirm] = useState(null)
+  const [feedbackModal, setFeedbackModal] = useState(null)
   const fileInputRef = useRef(null)
 
   const [form, setForm] = useState({
@@ -91,6 +110,16 @@ export default function UserEvent() {
   useEffect(() => {
     localStorage.setItem(EVENT_DRAFT_KEY, JSON.stringify(form))
   }, [form])
+
+  // ✅ AUDIT FIX: Cleanup object URLs on unmount or modal close to prevent memory leak
+  useEffect(() => {
+    return () => {
+      if (thumbPreview) {
+        URL.revokeObjectURL(thumbPreview)
+        console.log('✅ Cleaned up thumbnail preview URL on unmount')
+      }
+    }
+  }, [thumbPreview])
 
   useEffect(() => { fetchAll() }, [])
 
@@ -144,16 +173,64 @@ export default function UserEvent() {
   }
 
   const handleCreate = async () => {
+    // ✅ AUDIT FIX #1: Comprehensive pre-submit validation
     if (!form.title || !form.registration_start || !form.registration_end || !form.event_start || !form.event_end)
       return alert('Judul dan semua waktu wajib diisi!')
+    
+    // ✅ AUDIT FIX #2: Thumbnail validation for image type
+    if (form.thumbnail_type === 'image' && !thumbFile) {
+      console.warn('⚠️ Thumbnail image validation failed: no file selected')
+      return alert('Silakan pilih gambar thumbnail!')
+    }
+
+    // ✅ AUDIT FIX #3: File size validation (max 5MB)
+    if (thumbFile && thumbFile.size > 5 * 1024 * 1024) {
+      console.warn('⚠️ File size validation failed:', thumbFile.size, 'bytes')
+      return alert('Ukuran file terlalu besar (max 5MB)')
+    }
+
+    // ✅ AUDIT FIX #4: MIME type validation
+    if (thumbFile && !thumbFile.type.startsWith('image/')) {
+      console.warn('⚠️ MIME type validation failed:', thumbFile.type)
+      return alert('File harus berupa gambar (JPG, PNG, WebP, GIF)')
+    }
+
+    // ✅ AUDIT FIX #5: Prevent duplicate submit
+    if (submitting) {
+      console.warn('⚠️ Duplicate submit prevented')
+      return
+    }
+
     setSubmitting(true)
     try {
+      console.log('📤 Starting event creation with thumbnail:', { 
+        title: form.title, 
+        thumbnail_type: form.thumbnail_type,
+        has_file: !!thumbFile,
+        file_size: thumbFile?.size,
+        file_type: thumbFile?.type
+      })
+
       const data = new FormData()
       Object.entries(form).forEach(([k, v]) => data.append(k, v))
-      if (thumbFile) data.append('thumbnail', thumbFile)
+      if (thumbFile) {
+        data.append('thumbnail', thumbFile)
+        console.log('✅ Added thumbnail file to FormData:', thumbFile.name)
+      }
 
+      console.log('📡 Posting to /events/create...')
       const res = await api.post('/events/create', data)
-      console.log('✅ Event created:', res.data);
+      console.log('✅ Event created successfully:', {
+        eventId: res.data?.eventId,
+        has_thumbnail: !!res.data?.thumbnail,
+        status: res.data?.approvalStatus
+      })
+
+      // ✅ AUDIT FIX #6: Validate response includes required fields
+      if (!res.data?.eventId) {
+        console.error('❌ Invalid response: missing eventId')
+        throw new Error('Server response tidak valid (missing eventId)')
+      }
 
       setCreateModal(false)
       setForm({
@@ -161,20 +238,33 @@ export default function UserEvent() {
         thumbnail_type: 'image', thumbnail_text: '', thumbnail_color: '#22c55e',
         registration_start: '', registration_end: '', event_start: '', event_end: ''
       })
-      setThumbFile(null); setThumbPreview(null)
+      
+      // ✅ AUDIT FIX #7: Cleanup object URL to prevent memory leak
+      if (thumbPreview) {
+        URL.revokeObjectURL(thumbPreview)
+        console.log('✅ Cleaned up thumbnail preview URL')
+      }
+      setThumbFile(null)
+      setThumbPreview(null)
       localStorage.removeItem(EVENT_DRAFT_KEY)
-      fetchAll()
-      alert('✅ Event berhasil dibuat!')
+      
+      // ✅ AUDIT FIX #8: Refresh data and confirm
+      await fetchAll()
+      alert('✅ Event berhasil dibuat! Menunggu persetujuan admin.')
     } catch (err) {
-      console.error('Create error:', err)
-      alert(err.response?.data?.message || 'Gagal membuat event')
+      console.error('❌ Create event failed:', {
+        status: err.response?.status,
+        message: err.response?.data?.message,
+        error: err.message
+      })
+      const errorMsg = err.response?.data?.message || err.message || 'Gagal membuat event'
+      alert(`❌ ${errorMsg}`)
     }
     finally { setSubmitting(false) }
   }
 
   // Daftar event dari board (user ikut event orang lain)
   const handleRegisterEvent = async (event) => {
-    if (!window.confirm(`Daftar ke event "${event.title}"?\nKamu akan terdaftar sebagai Member GLI.`)) return
     try {
       const res = await api.post('/events/register', {
         event_id: event.id,
@@ -185,7 +275,12 @@ export default function UserEvent() {
       })
       setSuccessData(res.data)
       fetchAll()
-    } catch (err) { alert(err.response?.data?.message || 'Gagal daftar') }
+    } catch (err) {
+      setFeedbackModal({
+        title: 'Pendaftaran gagal',
+        message: err.response?.data?.message || 'Gagal daftar'
+      })
+    }
   }
 
   const sections = [
@@ -200,10 +295,10 @@ export default function UserEvent() {
       <main className="flex-1 overflow-y-auto">
 
         {/* HEADER */}
-        <div className="flex justify-between items-center px-8 py-7 border-b border-white/10">
+        <div className="flex justify-between items-center px-8 py-7 border-b border-gray-200 bg-white sticky top-0 z-20">
           <div>
-            <h1 className="font-black text-3xl text-white tracking-tighter uppercase italic">Event</h1>
-            <p className="text-white/40 text-[10px] font-bold tracking-[0.3em] uppercase mt-1">Buat & Ikuti Event</p>
+            <h1 className="font-black text-3xl text-gray-900 tracking-tighter uppercase italic">Event</h1>
+            <p className="text-gray-500 text-[10px] font-bold tracking-[0.3em] uppercase mt-1">Buat & Ikuti Event</p>
           </div>
           <div className="flex items-center gap-4">
             <button onClick={() => setCreateModal(true)}
@@ -217,7 +312,7 @@ export default function UserEvent() {
         <div className="px-8 pt-6 flex gap-3">
           {[{ key: 'board', label: 'Board Event' }, { key: 'myevent', label: 'Event Saya' }].map(t => (
             <button key={t.key} onClick={() => setActiveTab(t.key)}
-              className={`px-6 py-2.5 rounded-2xl font-black text-xs uppercase tracking-widest transition ${activeTab === t.key ? 'bg-white text-green-800' : 'bg-white/10 text-white/60 hover:bg-white/20'}`}>
+              className={`px-6 py-2.5 rounded-2xl font-black text-xs uppercase tracking-widest transition ${activeTab === t.key ? 'bg-white text-green-800 border border-green-100' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'}`}>
               {t.label}
             </button>
           ))}
@@ -225,13 +320,13 @@ export default function UserEvent() {
 
         <div className="p-8 max-w-6xl mx-auto">
           {loading ? (
-            <div className="py-20 text-center text-white font-bold uppercase tracking-widest shimmer-loading inline-block px-8 py-4 rounded-2xl bg-white/5 border border-white/10">Memuat...</div>
+            <div className="py-20 text-center text-gray-500 font-bold uppercase tracking-widest shimmer-loading inline-block px-8 py-4 rounded-2xl bg-white border border-gray-200">Memuat...</div>
           ) : activeTab === 'board' ? (
             // ===== BOARD EVENT =====
             <div>
               {allEvents.length === 0 ? (
-                <div className="py-20 text-center bg-white/5 rounded-[40px] border border-dashed border-white/20">
-                  <p className="text-white/30 font-black uppercase tracking-widest text-xs">Belum ada event</p>
+                <div className="py-20 text-center bg-white rounded-[40px] border border-dashed border-gray-200">
+                  <p className="text-gray-400 font-black uppercase tracking-widest text-xs">Belum ada event</p>
                 </div>
               ) : (
                 <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -246,7 +341,7 @@ export default function UserEvent() {
                         <div className="relative h-44">
                           <EventThumb event={event} />
                           <div className="absolute top-3 left-3">
-                            <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest ${isAdmin ? 'bg-blue-500 text-white' : 'bg-green-500 text-white'}`}>
+                            <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest ${isAdmin ? 'bg-green-600 text-white' : 'bg-green-500 text-white'}`}>
                               {isAdmin ? '👑 Admin' : '🌿 User'}
                             </span>
                           </div>
@@ -273,14 +368,14 @@ export default function UserEvent() {
                               <Eye size={11} /> Detail
                             </button>
                             {!isMyEvent && event.status === 'roundown' && !myReg && (
-                              <button onClick={() => handleRegisterEvent(event)}
+                              <button onClick={() => setRegisterConfirm(event)}
                                 className="flex-1 py-2 bg-green-400 text-green-900 text-[10px] font-black rounded-xl hover:bg-green-300 transition">
                                 Daftar
                               </button>
                             )}
                             {!isMyEvent && myReg && (
                               <button onClick={() => setSuccessData({ ...myReg, event_title: event.title, wa_link: event.wa_link, medal_name: event.medal_name, is_gli_member: myReg.is_gli_member })}
-                                className="flex-1 py-2 bg-blue-50 text-blue-600 text-[10px] font-black rounded-xl hover:bg-blue-100 transition">
+                                className="flex-1 py-2 bg-green-50 text-green-700 text-[10px] font-black rounded-xl hover:bg-green-100 transition">
                                 ✅ Terdaftar
                               </button>
                             )}
@@ -356,7 +451,7 @@ export default function UserEvent() {
                 <X size={14} />
               </button>
               <div className="absolute bottom-3 left-3 flex gap-2">
-                <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase ${detailModal.host_role === 'admin' ? 'bg-blue-500 text-white' : 'bg-green-500 text-white'}`}>
+                <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase ${detailModal.host_role === 'admin' ? 'bg-green-600 text-white' : 'bg-green-500 text-white'}`}>
                   {detailModal.host_role === 'admin' ? '👑 Admin' : '🌿 User'} · {detailModal.host_name}
                 </span>
                 <span className={`text-[10px] font-black px-3 py-1 rounded-full uppercase ${STATUS_MAP[detailModal.status]?.color}`}>
@@ -434,7 +529,28 @@ export default function UserEvent() {
                 {form.thumbnail_type === 'image' ? (
                   <div onClick={() => fileInputRef.current?.click()}
                     className="border-2 border-dashed border-gray-200 rounded-2xl p-6 text-center cursor-pointer hover:border-green-400 transition">
-                    <input type="file" hidden ref={fileInputRef} accept="image/*" onChange={e => { const f = e.target.files[0]; if (f) { setThumbFile(f); setThumbPreview(URL.createObjectURL(f)) } }} />
+                    <input type="file" hidden ref={fileInputRef} accept="image/*" onChange={e => {
+                      const f = e.target.files?.[0]
+                      if (!f) return
+                      
+                      // ✅ AUDIT FIX: Validate file before preview
+                      if (!f.type.startsWith('image/')) {
+                        console.warn('❌ Invalid MIME type:', f.type)
+                        alert('File harus berupa gambar (JPG, PNG, WebP, GIF)')
+                        return
+                      }
+                      if (f.size > 5 * 1024 * 1024) {
+                        console.warn('❌ File too large:', f.size)
+                        alert('Ukuran file terlalu besar (max 5MB)')
+                        return
+                      }
+                      
+                      console.log('✅ File validation passed:', { name: f.name, size: f.size, type: f.type })
+                      setThumbFile(f)
+                      const preview = URL.createObjectURL(f)
+                      setThumbPreview(preview)
+                      console.log('✅ Thumbnail preview created')
+                    }} />
                     {thumbPreview ? <img src={thumbPreview} className="w-full h-32 object-cover rounded-xl" /> :
                       <div className="text-gray-300"><Upload size={32} className="mx-auto mb-2" /><p className="text-xs font-bold">Klik upload gambar</p></div>}
                   </div>
@@ -566,7 +682,7 @@ export default function UserEvent() {
                 🏅 Terdaftar sebagai Member GLI! Upload bukti saat event untuk dapat <strong>{successData.medal_name}</strong>.
               </div>
             ) : (
-              <div className="bg-blue-50 rounded-2xl p-3 mt-3 mb-3 text-xs text-blue-600 font-bold">
+              <div className="bg-green-50 rounded-2xl p-3 mt-3 mb-3 text-xs text-green-700 font-bold">
                 👤 Terdaftar sebagai Guest.
               </div>
             )}
@@ -576,13 +692,13 @@ export default function UserEvent() {
                 <ExternalLink size={16} /> Bergabung ke Grup WA
               </a>
             )}
-            {successData.event_id && successData.is_gli_member && (
+            {successData.event_id && successData.is_gli_member && successData.event_status === 'dilaksanakan' && (
               <button
                 onClick={() => {
                   navigate(`/event/${successData.event_id}/proof/${successData.registration_id}`);
                   setSuccessData(null);
                 }}
-                className="w-full flex items-center justify-center gap-2 py-3 bg-blue-600 text-white font-black text-sm rounded-2xl hover:bg-blue-700 transition mb-3"
+                className="w-full flex items-center justify-center gap-2 py-3 bg-green-600 text-white font-black text-sm rounded-2xl hover:bg-green-700 transition mb-3"
               >
                 📸 Upload Bukti Kehadiran
               </button>
@@ -598,6 +714,35 @@ export default function UserEvent() {
             )}
             <button onClick={() => setSuccessData(null)}
               className="w-full py-4 bg-gray-100 text-gray-600 font-black rounded-2xl hover:bg-gray-200 transition">Tutup</button>
+          </div>
+        </div>
+      )}
+
+      {/* ===== POPUP KONFIRMASI DAFTAR ===== */}
+      {registerConfirm && (
+        <div className="fixed inset-0 z-[220] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={() => setRegisterConfirm(null)}>
+          <div className="bg-white rounded-[32px] w-full max-w-sm shadow-2xl p-8" onClick={e => e.stopPropagation()}>
+            <p className="text-[10px] font-black text-green-600 uppercase tracking-[0.3em] mb-2">Konfirmasi</p>
+            <h3 className="font-black text-2xl text-gray-800 mb-3 leading-tight">Daftar ke event ini?</h3>
+            <p className="text-gray-500 text-sm leading-relaxed mb-6">
+              Kamu akan terdaftar sebagai Member GLI untuk event <strong>{registerConfirm.title}</strong>.
+            </p>
+            <div className="flex gap-3">
+              <button onClick={() => setRegisterConfirm(null)} className="flex-1 py-3 bg-gray-100 text-gray-600 font-black rounded-2xl hover:bg-gray-200 transition">Cancel</button>
+              <button onClick={async () => { const target = registerConfirm; setRegisterConfirm(null); await handleRegisterEvent(target) }} className="flex-1 py-3 bg-green-500 text-white font-black rounded-2xl hover:bg-green-600 transition">OK</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ===== POPUP PESAN ===== */}
+      {feedbackModal && (
+        <div className="fixed inset-0 z-[230] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm" onClick={() => setFeedbackModal(null)}>
+          <div className="bg-white rounded-[32px] w-full max-w-sm shadow-2xl p-8 text-center" onClick={e => e.stopPropagation()}>
+            <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-yellow-100 flex items-center justify-center text-yellow-600 font-black text-xl">!</div>
+            <h3 className="font-black text-xl text-gray-800 mb-2">{feedbackModal.title}</h3>
+            <p className="text-gray-500 text-sm mb-6">{feedbackModal.message}</p>
+            <button onClick={() => setFeedbackModal(null)} className="w-full py-3 bg-gray-100 text-gray-600 font-black rounded-2xl hover:bg-gray-200 transition">OK</button>
           </div>
         </div>
       )}
