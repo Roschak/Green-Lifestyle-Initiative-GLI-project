@@ -9,12 +9,12 @@ let firebaseReady = false;
 let authRoutes, userRoutes, adminRoutes, eventRoutes, articleRoutes, geocodeRoutes;
 
 try {
-  // ✅ INITIALIZE DATABASE DULU
+  //INITIALIZE DATABASE DULU
   db = require('./config/db');
   firebaseReady = require('./config/db').firebaseReady;
 
   if (!firebaseReady) {
-    console.error('⚠️ FIREBASE NOT READY - DATABASE QUERIES WILL FAIL');
+    console.error(' FIREBASE NOT READY - DATABASE QUERIES WILL FAIL');
   }
 
   authRoutes = require('./routes/authRoutes');
@@ -34,7 +34,7 @@ try {
 
 const app = express();
 
-// ✅ CORS CONFIGURATION - Comprehensive
+//CORS CONFIGURATION - Comprehensive
 const corsOptions = {
   origin: function (origin, callback) {
     const allowedOrigins = [
@@ -55,7 +55,7 @@ const corsOptions = {
     if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app') || origin.endsWith('.web.app')) {
       callback(null, true);
     } else {
-      console.log('❌ CORS rejected origin:', origin);
+      console.log('CORS rejected origin:', origin);
       callback(new Error('Not allowed by CORS'));
     }
   },
@@ -68,14 +68,14 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
-// ✅ Explicit preflight handler
+// Explicit preflight handler
 app.options('*', cors(corsOptions));
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static('uploads'));
 
-// ✅ ROUTES
+// ROUTES
 if (authRoutes) app.use('/api/auth', authRoutes);
 if (userRoutes) app.use('/api/user', userRoutes);
 if (adminRoutes) app.use('/api/admin', adminRoutes);
@@ -83,7 +83,7 @@ if (eventRoutes) app.use('/api/events', eventRoutes);
 if (articleRoutes) app.use('/api', articleRoutes);
 if (geocodeRoutes) app.use('/api/geocode', geocodeRoutes);
 
-// ✅ HEALTH CHECK
+// HEALTH CHECK
 app.get('/health', (req, res) => {
   const response = {
     status: firebaseReady ? 'OK' : 'DEGRADED',
@@ -99,7 +99,7 @@ app.get('/health', (req, res) => {
   res.status(firebaseReady ? 200 : 503).json(response);
 });
 
-// ✅ ALIVE CHECK - returns 200 even if Firebase isn't ready
+// ALIVE CHECK - returns 200 even if Firebase isn't ready
 app.get('/alive', (req, res) => {
   res.json({
     alive: true,
@@ -107,12 +107,12 @@ app.get('/alive', (req, res) => {
   });
 });
 
-// ✅ 404 HANDLER
+//  404 HANDLER
 app.use((req, res) => {
   res.status(404).json({ success: false, message: 'Route not found' });
 });
 
-// ✅ ERROR HANDLER
+// ERROR HANDLER
 app.use((err, req, res, next) => {
   console.error('❌ Server Error:', err.message);
   console.error('❌ Error stack:', err.stack);
@@ -134,10 +134,10 @@ const PORT = process.env.PORT || 5000;
 // Only listen in development/localhost
 if (process.env.NODE_ENV !== 'production') {
   const server = app.listen(PORT, () => {
-    console.log(`🚀 Backend running on http://localhost:${PORT}`);
-    console.log(`✅ CORS enabled`);
-    console.log(`📝 NODE_ENV: ${process.env.NODE_ENV || 'development'}`);
-    console.log(`📝 Firebase Project ID: ${process.env.FIREBASE_PROJECT_ID || 'NOT SET'}`);
+    console.log(`Backend running on http://localhost:${PORT}`);
+    console.log(`CORS enabled`);
+    console.log(`NODE_ENV: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`Firebase Project ID: ${process.env.FIREBASE_PROJECT_ID || 'NOT SET'}`);
   });
 
   server.on('error', (err) => {

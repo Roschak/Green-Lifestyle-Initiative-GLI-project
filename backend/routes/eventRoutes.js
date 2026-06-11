@@ -2,11 +2,12 @@
 const express = require('express');
 const router = express.Router();
 const eventController = require('../controllers/eventController');
+const eventControllerFixes = require('../controllers/eventController-FIXES');
 const exportController = require('../controllers/exportController');
 const upload = require('../config/multer');
 const { protect, adminOnly } = require('../middleware/authMiddleware');
 
-router.post('/create', protect, upload.single('thumbnail'), eventController.createEvent);
+router.post('/create', protect, upload.single('thumbnail'), eventControllerFixes.createEvent);
 router.get('/', eventController.getAllEvents); // ✅ Public - no auth needed
 router.get('/host/:user_id', protect, eventController.getHostEvents);
 router.get('/my/:user_id', protect, eventController.getUserRegistrations);

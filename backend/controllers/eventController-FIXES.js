@@ -1,5 +1,8 @@
 // backend/controllers/eventController.js - CRITICAL FIXES
 
+const db = require('../config/db');
+const admin = require('firebase-admin');
+
 // ============= ISSUE #1: Event Creation Approval System =============
 // NEW FEATURE: User creates event → Must be approved by admin before showing
 

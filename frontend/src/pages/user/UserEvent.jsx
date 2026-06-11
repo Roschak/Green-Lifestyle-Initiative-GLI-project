@@ -250,7 +250,7 @@ export default function UserEvent() {
       
       // ✅ AUDIT FIX #8: Refresh data and confirm
       await fetchAll()
-      alert('✅ Event berhasil dibuat! Menunggu persetujuan admin.')
+      alert('✅ Event berhasil dibuat!')
     } catch (err) {
       console.error('❌ Create event failed:', {
         status: err.response?.status,

@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import AdminSidebar from '../../components/AdminSidebar'
 import { Bell, Search, Calendar, X, Camera, CheckCircle, Ban } from 'lucide-react'
+import ScoringGuide from '../../components/moderation/ScoringGuide'
 import { getAllActions, verifyAction } from '../../services/api'
 
 const BG = '#f3f4f6'
@@ -291,70 +292,82 @@ export default function AdminModerasi() {
       {verifModal && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setVerifModal(null)} />
-          <div className="relative w-full max-w-lg max-h-[90vh] bg-white rounded-[40px] p-10 shadow-2xl overflow-y-auto">
-            <div className="absolute top-0 left-0 w-full h-2 bg-yellow-400" />
+          <div className="relative w-full max-w-4xl max-h-[90vh] bg-transparent rounded-[40px] p-0 shadow-none">
+            <div className="grid grid-cols-1 md:grid-cols-12 gap-5">
 
-            {getImageUrl(verifModal) && (
-              <div className="mb-6 rounded-2xl overflow-hidden max-h-48">
-                <img
-                  src={getImageUrl(verifModal)}
-                  alt={verifModal.action_name}
-                  className="w-full h-48 object-cover"
-                />
-              </div>
-            )}
-
-            <h3 className="text-2xl font-black text-gray-800 uppercase tracking-tighter mb-2">Verifikasi Aksi</h3>
-            <p className="text-gray-400 text-xs font-bold mb-8 uppercase tracking-widest italic">
-              {verifModal.user_name} • {verifModal.action_name}
-            </p>
-
-            <div className="space-y-6">
-              <div>
-                <label className="block text-[10px] font-black text-gray-400 uppercase mb-2 tracking-widest">Berikan Poin</label>
-                <input
-                  type="number"
-                  placeholder="Contoh: 20"
-                  className="w-full bg-gray-50 border-none rounded-2xl px-5 py-4 font-black text-green-600 focus:ring-2 focus:ring-green-400 transition-all"
-                  value={verifData.poin}
-                  onChange={(e) => setVerifData({ ...verifData, poin: e.target.value })}
-                />
+              {/* PANEL KIRI: Scoring Guide (NEW) */}
+              <div className="md:col-span-5">
+                <ScoringGuide />
               </div>
 
-              <div>
-                <label className="block text-[10px] font-black text-gray-400 uppercase mb-2 tracking-widest">Catatan Admin (Opsional)</label>
-                <textarea
-                  placeholder="Mantap, pertahankan!"
-                  className="w-full bg-gray-50 border-none rounded-2xl px-5 py-4 text-xs font-bold focus:ring-2 focus:ring-green-400 min-h-[80px]"
-                  value={verifData.catatan}
-                  onChange={(e) => setVerifData({ ...verifData, catatan: e.target.value })}
-                />
+              {/* FORM LAMA (kiri->kanan move only, no logic changes) */}
+              <div className="md:col-span-7 bg-white rounded-[40px] p-10 shadow-2xl overflow-y-auto max-h-[90vh]">
+                <div className="absolute top-0 left-0 w-full h-2 bg-yellow-400" />
+
+                {getImageUrl(verifModal) && (
+                  <div className="mb-6 rounded-2xl overflow-hidden max-h-48">
+                    <img
+                      src={getImageUrl(verifModal)}
+                      alt={verifModal.action_name}
+                      className="w-full h-48 object-cover"
+                    />
+                  </div>
+                )}
+
+                <h3 className="text-2xl font-black text-gray-800 uppercase tracking-tighter mb-2">Verifikasi Aksi</h3>
+                <p className="text-gray-400 text-xs font-bold mb-8 uppercase tracking-widest italic">
+                  {verifModal.user_name} • {verifModal.action_name}
+                </p>
+
+                <div className="space-y-6">
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase mb-2 tracking-widest">Berikan Poin</label>
+                    <input
+                      type="number"
+                      placeholder="Contoh: 20"
+                      className="w-full bg-gray-50 border-none rounded-2xl px-5 py-4 font-black text-green-600 focus:ring-2 focus:ring-green-400 transition-all"
+                      value={verifData.poin}
+                      onChange={(e) => setVerifData({ ...verifData, poin: e.target.value })}
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase mb-2 tracking-widest">Catatan Admin (Opsional)</label>
+                    <textarea
+                      placeholder="Mantap, pertahankan!"
+                      className="w-full bg-gray-50 border-none rounded-2xl px-5 py-4 text-xs font-bold focus:ring-2 focus:ring-green-400 min-h-[80px]"
+                      value={verifData.catatan}
+                      onChange={(e) => setVerifData({ ...verifData, catatan: e.target.value })}
+                    />
+                  </div>
+
+                  <input
+                    placeholder="Alasan ditolak (Wajib jika klik Tolak)"
+                    className="w-full bg-red-50/50 border-none rounded-xl px-4 py-3 text-[10px] font-bold text-red-500 placeholder:text-red-300"
+                    value={verifData.saran}
+                    onChange={(e) => setVerifData({ ...verifData, saran: e.target.value })}
+                  />
+
+                  <div className="pt-2 flex gap-3">
+                    <button
+                      onClick={() => handleVerify(verifModal.id, 'approved')}
+                      className="flex-1 bg-green-500 hover:bg-green-600 text-white font-black py-4 rounded-2xl shadow-lg shadow-green-200 transition-all flex items-center justify-center gap-2 uppercase text-xs tracking-widest"
+                    >
+                      <CheckCircle size={18} /> Setujui
+                    </button>
+                    <button
+                      onClick={() => {
+                        if (!verifData.saran) return alert('Berikan alasan kenapa ditolak!')
+                        handleVerify(verifModal.id, 'rejected')
+                      }}
+                      className="flex-1 bg-gray-100 hover:bg-red-50 text-gray-400 hover:text-red-500 font-black py-4 rounded-2xl transition-all flex items-center justify-center gap-2 uppercase text-xs tracking-widest"
+                    >
+                      <Ban size={18} /> Tolak
+                    </button>
+                  </div>
+                </div>
               </div>
 
-              <input
-                placeholder="Alasan ditolak (Wajib jika klik Tolak)"
-                className="w-full bg-red-50/50 border-none rounded-xl px-4 py-3 text-[10px] font-bold text-red-500 placeholder:text-red-300"
-                value={verifData.saran}
-                onChange={(e) => setVerifData({ ...verifData, saran: e.target.value })}
-              />
-
-              <div className="pt-2 flex gap-3">
-                <button
-                  onClick={() => handleVerify(verifModal.id, 'approved')}
-                  className="flex-1 bg-green-500 hover:bg-green-600 text-white font-black py-4 rounded-2xl shadow-lg shadow-green-200 transition-all flex items-center justify-center gap-2 uppercase text-xs tracking-widest"
-                >
-                  <CheckCircle size={18} /> Setujui
-                </button>
-                <button
-                  onClick={() => {
-                    if (!verifData.saran) return alert('Berikan alasan kenapa ditolak!')
-                    handleVerify(verifModal.id, 'rejected')
-                  }}
-                  className="flex-1 bg-gray-100 hover:bg-red-50 text-gray-400 hover:text-red-500 font-black py-4 rounded-2xl transition-all flex items-center justify-center gap-2 uppercase text-xs tracking-widest"
-                >
-                  <Ban size={18} /> Tolak
-                </button>
-              </div>
             </div>
           </div>
         </div>

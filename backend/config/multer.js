@@ -20,7 +20,7 @@ if (hasCloudinary) {
       api_secret: process.env.CLOUDINARY_API_SECRET
     });
 
-    console.log('✅ Cloudinary configured');
+    console.log('Cloudinary configured');
 
     // Storage untuk multer
     const storage = new CloudinaryStorage({
@@ -36,7 +36,7 @@ if (hasCloudinary) {
       storage: storage,
       limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
       fileFilter: (req, file, cb) => {
-        console.log('📁 File received:', file.originalname, file.mimetype);
+        console.log('File received:', file.originalname, file.mimetype);
         if (file.mimetype.startsWith('image/')) {
           cb(null, true);
         } else {
@@ -45,12 +45,12 @@ if (hasCloudinary) {
       }
     });
   } catch (err) {
-    console.error('❌ Cloudinary error:', err.message);
-    console.log('⚠️ Falling back to memory storage');
+    console.error('Cloudinary error:', err.message);
+    console.log('Falling back to memory storage');
     upload = multer({ storage: multer.memoryStorage() });
   }
 } else {
-  console.log('⚠️ Cloudinary not configured, using memory storage for uploads');
+  console.log('Cloudinary not configured, using memory storage for uploads');
 
   upload = multer({
     storage: multer.memoryStorage(),

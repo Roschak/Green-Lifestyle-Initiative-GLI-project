@@ -80,7 +80,7 @@ exports.verifyAction = async (req, res) => {
                 monthly_points: newMonthly
             });
 
-            console.log(`✅ Points added to user ${actionData.user_id}: +${pointsToAdd} (total: ${newTotal})`);
+            console.log(`Points added to user ${actionData.user_id}: +${pointsToAdd} (total: ${newTotal})`);
         }
 
         // If rejected, add rejection reason
@@ -92,7 +92,7 @@ exports.verifyAction = async (req, res) => {
         // Update action
         await actionRef.update(updateData);
 
-        console.log('✅ Action verified:', id, `status=${status}, points=${pointsToAdd}`);
+        console.log('Action verified:', id, `status=${status}, points=${pointsToAdd}`);
 
         return res.json({
             success: true,
@@ -101,7 +101,7 @@ exports.verifyAction = async (req, res) => {
         });
 
     } catch (err) {
-        console.error('❌ Verify Action Error:', err.message);
+        console.error('Verify Action Error:', err.message);
         return res.status(500).json({
             success: false,
             message: 'Gagal memverifikasi aksi: ' + err.message
@@ -144,7 +144,7 @@ exports.getPendingEventApprovals = async (req, res) => {
         });
 
     } catch (err) {
-        console.error('❌ Get Pending Events Error:', err.message);
+        console.error(' Get Pending Events Error:', err.message);
         return res.status(500).json({
             success: false,
             message: err.message

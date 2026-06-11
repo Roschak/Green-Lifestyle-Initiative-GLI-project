@@ -11,11 +11,11 @@ if (!admin.apps.length) {
         try {
             const serviceAccount = require('../serviceAccountKey.json');
             credential = admin.credential.cert(serviceAccount);
-            console.log('✅ Using serviceAccountKey.json');
+            console.log('Using serviceAccountKey.json');
         } catch (fileError) {
             // Fall back to environment variables (Vercel/production)
-            console.log('📦 serviceAccountKey.json not found, trying environment variables');
-            console.log(`📝 Checking FIREBASE_PROJECT_ID: ${process.env.FIREBASE_PROJECT_ID ? 'SET' : 'NOT SET'}`);
+            console.log('serviceAccountKey.json not found, trying environment variables');
+            console.log(`Checking FIREBASE_PROJECT_ID: ${process.env.FIREBASE_PROJECT_ID ? 'SET' : 'NOT SET'}`);
 
             const serviceAccount = {
                 type: "service_account",
@@ -35,7 +35,7 @@ if (!admin.apps.length) {
             }
 
             credential = admin.credential.cert(serviceAccount);
-            console.log('✅ Firebase credential created from environment variables');
+            console.log('Firebase credential created from environment variables');
         }
 
         const storageBucket = process.env.FIREBASE_STORAGE_BUCKET ||
@@ -48,16 +48,16 @@ if (!admin.apps.length) {
         });
 
         const project = process.env.FIREBASE_PROJECT_ID || 'unknown';
-        console.log('✅ Firebase Admin SDK initialized');
-        console.log(`📁 Project: ${project}`);
-        console.log(`🪣 Storage bucket: ${storageBucket || 'DEFAULT'}`);
+        console.log('Firebase Admin SDK initialized');
+        console.log(`Project: ${project}`);
+        console.log(`Storage bucket: ${storageBucket || 'DEFAULT'}`);
 
         db = admin.firestore();
         firebaseReady = true;
     } catch (error) {
-        console.error('❌ Firebase Initialization Error:', error.message);
-        console.error('⚠️ Firebase is NOT ready. App will run but database queries will fail');
-        console.error('⚠️ To fix, either:');
+        console.error('Firebase Initialization Error:', error.message);
+        console.error('Firebase is NOT ready. App will run but database queries will fail');
+        console.error('To fix, either:');
         console.error('  1. Add serviceAccountKey.json to backend folder (localhost), OR');
         console.error('  2. Set environment variables in Vercel:');
         console.error('     - FIREBASE_PROJECT_ID');

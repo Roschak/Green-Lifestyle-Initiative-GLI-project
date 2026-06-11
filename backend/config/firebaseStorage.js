@@ -21,7 +21,7 @@ const getBucket = () => {
  */
 async function uploadToFirebaseStorage(fileBuffer, fileName, folder = 'uploads') {
     try {
-        console.log(`📤 Uploading ${fileName} to Firebase Storage/${folder}...`);
+        console.log(`Uploading ${fileName} to Firebase Storage/${folder}...`);
 
         const bucket = getBucket();
         const timestamp = Date.now();
@@ -41,11 +41,11 @@ async function uploadToFirebaseStorage(fileBuffer, fileName, folder = 'uploads')
 
         // Generate public URL
         const publicUrl = `https://storage.googleapis.com/${bucket.name}/${filePath}`;
-        console.log(`✅ File uploaded: ${publicUrl}`);
+        console.log(`File uploaded: ${publicUrl}`);
 
         return publicUrl;
     } catch (err) {
-        console.error('❌ Firebase Storage upload error:', err.message);
+        console.error('Firebase Storage upload error:', err.message);
         throw err;
     }
 }
